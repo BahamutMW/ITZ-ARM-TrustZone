@@ -1,0 +1,11 @@
+---
++++ src/noux-pkg/e2fsprogs/lib/Makefile.library
+@@ -2,6 +2,8 @@ all:: subdirs $(LIBRARY).a
+ 
+ install-shlibs::
+ 
++install-shlibs-strip::
++
+ uninstall-shlibs::
+ 
+ real-subdirs::

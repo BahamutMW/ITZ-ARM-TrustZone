@@ -1,0 +1,10 @@
++++ src/noux-pkg/e2fsprogs/MCONFIG.in
+@@ -62,6 +62,8 @@ datadir = @datadir@
+ @ifGNUmake@   endif
+ @ifGNUmake@ endif
+ 
++CHECK_CMD = true
++
+ @ifNotGNUmake@ CHECK_CMD=@true
+ 
+ CC = @CC@

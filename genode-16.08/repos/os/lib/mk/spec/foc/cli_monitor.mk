@@ -1,0 +1,1 @@
+LIBS += foc_cli_monitor

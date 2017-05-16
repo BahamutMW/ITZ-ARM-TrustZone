@@ -1,0 +1,120 @@
+--- a/drivers/net/wireless/iwlwifi/dvm/calib.c
++++ b/drivers/net/wireless/iwlwifi/dvm/calib.c
+@@ -121,7 +121,7 @@ int iwl_calib_set(struct iwl_priv *priv,
+ 	struct iwl_calib_result *res, *tmp;
+ 
+ 	res = kmalloc(sizeof(*res) + len - sizeof(struct iwl_calib_hdr),
+-		      GFP_ATOMIC);
++		      GFP_ATOMIC | GFP_LX_DMA);
+ 	if (!res)
+ 		return -ENOMEM;
+ 	memcpy(&res->hdr, cmd, len);
+--- a/drivers/net/wireless/iwlwifi/dvm/scan.c
++++ b/drivers/net/wireless/iwlwifi/dvm/scan.c
+@@ -672,7 +672,7 @@ static int iwlagn_request_scan(struct iwl_priv *priv, struct ieee80211_vif *vif)
+ 		ctx = iwl_rxon_ctx_from_vif(vif);
+ 
+ 	if (!priv->scan_cmd) {
+-		priv->scan_cmd = kmalloc(scan_cmd_size, GFP_KERNEL);
++		priv->scan_cmd = kmalloc(scan_cmd_size, GFP_KERNEL | GFP_LX_DMA);
+ 		if (!priv->scan_cmd) {
+ 			IWL_DEBUG_SCAN(priv,
+ 				       "fail to allocate memory for scan\n");
+--- a/drivers/net/wireless/iwlwifi/pcie/tx.c
++++ b/drivers/net/wireless/iwlwifi/pcie/tx.c
+@@ -492,7 +492,7 @@ static int iwl_pcie_txq_alloc(struct iwl_trans *trans,
+ 
+ 	txq->entries = kcalloc(slots_num,
+ 			       sizeof(struct iwl_pcie_txq_entry),
+-			       GFP_KERNEL);
++			       GFP_KERNEL | GFP_LX_DMA);
+ 
+ 	if (!txq->entries)
+ 		goto error;
+@@ -501,7 +501,7 @@ static int iwl_pcie_txq_alloc(struct iwl_trans *trans,
+ 		for (i = 0; i < slots_num; i++) {
+ 			txq->entries[i].cmd =
+ 				kmalloc(sizeof(struct iwl_device_cmd),
+-					GFP_KERNEL);
++					GFP_KERNEL | GFP_LX_DMA);
+ 			if (!txq->entries[i].cmd)
+ 				goto error;
+ 		}
+@@ -840,7 +840,7 @@ static int iwl_pcie_tx_alloc(struct iwl_trans *trans)
+ 	}
+ 
+ 	trans_pcie->txq = kcalloc(trans->cfg->base_params->num_of_queues,
+-				  sizeof(struct iwl_txq), GFP_KERNEL);
++				  sizeof(struct iwl_txq), GFP_KERNEL | GFP_LX_DMA);
+ 	if (!trans_pcie->txq) {
+ 		IWL_ERR(trans, "Not enough memory for txq\n");
+ 		ret = -ENOMEM;
+@@ -1255,7 +1255,7 @@ static int iwl_pcie_enqueue_hcmd(struct iwl_trans *trans,
+ 			}
+ 
+ 			dup_buf = kmemdup(cmddata[i], cmdlen[i],
+-					  GFP_ATOMIC);
++					  GFP_ATOMIC | GFP_LX_DMA);
+ 			if (!dup_buf)
+ 				return -ENOMEM;
+ 		} else {
+--- a/net/core/skbuff.c
++++ b/net/core/skbuff.c
+@@ -125,6 +125,8 @@ static void *__kmalloc_reserve(size_t size, gfp_t flags, int node,
+ 	void *obj;
+ 	bool ret_pfmemalloc = false;
+ 
++	flags |= GFP_LX_DMA;
++
+ 	/*
+ 	 * Try a regular allocation, when that fails and we're not entitled
+ 	 * to the reserves, fail.
+--- a/drivers/net/wireless/iwlwifi/iwl-phy-db.c
++++ a/drivers/net/wireless/iwlwifi/iwl-phy-db.c
+@@ -233,7 +233,7 @@
+ 		return -EINVAL;
+ 
+ 	kfree(entry->data);
+-	entry->data = kmemdup(phy_db_notif->data, size, alloc_ctx);
++	entry->data = kmemdup(phy_db_notif->data, size, alloc_ctx | GFP_LX_DMA);
+ 	if (!entry->data) {
+ 		entry->size = 0;
+ 		return -ENOMEM;
+diff --git a/drivers/net/wireless/iwlwifi/mvm/ops.c b/drivers/net/wireless/iwlwifi/mvm/ops.c
+index 13c97f6..68a8657 100644
+--- a/drivers/net/wireless/iwlwifi/mvm/ops.c
++++ b/drivers/net/wireless/iwlwifi/mvm/ops.c
+@@ -574,7 +574,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
+ 
+ 	scan_size = iwl_mvm_scan_size(mvm);
+ 
+-	mvm->scan_cmd = kmalloc(scan_size, GFP_KERNEL);
++	mvm->scan_cmd = kmalloc(scan_size, GFP_KERNEL | GFP_LX_DMA);
+ 	if (!mvm->scan_cmd)
+ 		goto out_free;
+ 
+--- a/drivers/net/wireless/iwlwifi/mvm/scan.c
++++ b/drivers/net/wireless/iwlwifi/mvm/scan.c
+@@ -481,11 +481,11 @@
+ 	else
+ 		blacklist_len = IWL_SCAN_MAX_BLACKLIST_LEN;
+ 
+-	blacklist = kzalloc(sizeof(*blacklist) * blacklist_len, GFP_KERNEL);
++	blacklist = kzalloc(sizeof(*blacklist) * blacklist_len, GFP_KERNEL|GFP_LX_DMA);
+ 	if (!blacklist)
+ 		return -ENOMEM;
+ 
+-	profile_cfg = kzalloc(sizeof(*profile_cfg), GFP_KERNEL);
++	profile_cfg = kzalloc(sizeof(*profile_cfg), GFP_KERNEL|GFP_LX_DMA);
+ 	if (!profile_cfg) {
+ 		ret = -ENOMEM;
+ 		goto free_blacklist;
+@@ -916,7 +916,7 @@
+ 
+ 	cmd_size = sizeof(*scan_config) + mvm->fw->ucode_capa.n_scan_channels;
+ 
+-	scan_config = kzalloc(cmd_size, GFP_KERNEL);
++	scan_config = kzalloc(cmd_size, GFP_KERNEL|GFP_LX_DMA);
+ 	if (!scan_config)
+ 		return -ENOMEM;
+ 

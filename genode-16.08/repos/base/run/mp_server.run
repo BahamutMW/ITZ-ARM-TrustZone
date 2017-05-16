@@ -1,0 +1,107 @@
+#
+# \brief  Test to start and call RPC entrypoint on all available CPUs
+# \author Norman Feske
+# \author Alexander Boettcher
+#
+
+
+build "core init test/mp_server"
+
+create_boot_directory
+
+install_config {
+	<config>
+		<parent-provides>
+			<service name="LOG"/>
+			<service name="CPU"/>
+			<service name="RM"/>
+			<service name="CAP"/>
+		</parent-provides>
+		<default-route>
+			<any-service> <parent/> </any-service>
+		</default-route>
+		<start name="test-server-mp">
+			<resource name="RAM" quantum="10M"/>
+		</start>
+	</config>
+}
+
+build_boot_image "core init test-server-mp"
+
+if {[have_include "power_on/qemu"]} {
+	# in general we want to have at least 2 CPUs
+	set want_cpus 2
+
+	# pbxa9 - foc does only use 1 cpu even if more are configured
+	# pbxa9 - hw does not support multiple CPUs
+	if {[have_spec pbxa9]} { set want_cpus 1 }
+	# kernels only using one CPU even if more are configured
+	if {[have_spec okl4]}           { set want_cpus 1 }
+	if {[have_spec pistachio]}      { set want_cpus 1 }
+	if {[have_spec fiasco]}         { set want_cpus 1 }
+	if {[have_spec hw_x86_64]}      { set want_cpus 1 }
+	if {[have_spec hw_zynq]}        { set want_cpus 1 }
+	if {[have_spec sel4]}           { set want_cpus 1 }
+
+	append qemu_args " -nographic -m 64 -smp $want_cpus,cores=$want_cpus "
+}
+
+# run the test
+run_genode_until {\[init -\> test-server-mp\] done.*\n} 60
+
+set cpus [regexp -inline {Detected [0-9x]+ CPU[s\.]} $output]
+set cpus [regexp -all -inline {[0-9]+} $cpus]
+set cpus [expr [lindex $cpus 0] * [lindex $cpus 1]]
+
+if {[have_include "power_on/qemu"]} {
+	if {$want_cpus != $cpus} {
+		puts "CPU count is not as expected: $want_cpus != $cpus"
+		exit 1;
+	}
+}
+
+# pay only attention to the output of init and its children
+grep_output {^\[init }
+
+# remove upgrade messages from init
+unify_output {\[init \-\> test\-server\-mp\] upgrading quota donation for .* \([0-9]+ bytes\)} ""
+trim_lines
+
+unify_output {transfer cap [a-f0-9]+} "transfer cap UNIFIED"
+unify_output {yes - idx [a-f0-9]+} "yes - idx UNIFIED"
+unify_output {\- received cap [a-f0-9]+} "- received cap UNIFIED"
+
+set good_string {
+	[init -> test-server-mp] --- test-mp_server started ---
+	[init -> test-server-mp] Detected }
+append good_string "$cpus"
+append good_string "x1 CPU"
+if {$cpus > 1} { append good_string "s" }
+append good_string ".\n"
+
+for {set r 0} {$r < $cpus} {incr r} {
+	append good_string {[init -> test-server-mp] call server on CPU }
+	append good_string "$r\n"
+	append good_string {[init -> test-server-mp] function test_untyped: got value }
+	append good_string "$r\n"
+}
+
+for {set r 0} {$r < $cpus} {incr r} {
+	append good_string {[init -> test-server-mp] call server on CPU }
+	append good_string "$r - transfer cap UNIFIED\n"
+	append good_string {[init -> test-server-mp] function test_cap: capability is valid ? yes - idx UNIFIED}
+	append good_string "\n"
+}
+
+for {set r 0} {$r < $cpus} {incr r} {
+	append good_string {[init -> test-server-mp] call server on CPU }
+	append good_string "$r - transfer cap UNIFIED\n"
+	append good_string {[init -> test-server-mp] function test_cap_reply: capability is valid ? yes - idx UNIFIED}
+	append good_string "\n"
+	append good_string {[init -> test-server-mp] got from server on CPU }
+	append good_string "$r - received cap UNIFIED\n"
+}
+
+append good_string {[init -> test-server-mp] done}
+
+compare_output_to $good_string

@@ -1,0 +1,2 @@
+This repository contains the source code of a simple client-server scenario
+using Genode's RPC mechanism.

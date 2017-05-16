@@ -1,0 +1,38 @@
+#
+# Build
+#
+
+build { core init hello }
+
+create_boot_directory
+
+#
+# Generate config
+#
+
+install_config {
+<config>
+	<parent-provides>
+		<service name="LOG"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="hello_server">
+		<resource name="RAM" quantum="1M"/>
+		<provides> <service name="Hello"/> </provides>
+	</start>
+	<start name="hello_client">
+		<resource name="RAM" quantum="1M"/>
+	</start>
+</config>}
+
+#
+# Boot image
+#
+
+build_boot_image { core init hello_client hello_server }
+
+append qemu_args " -nographic "
+
+run_genode_until "hello test completed.*\n" 10

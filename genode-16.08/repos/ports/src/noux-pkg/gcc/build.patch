@@ -1,0 +1,166 @@
+build.patch
+
+From: Christian Prochaska <christian.prochaska@genode-labs.com>
+
+
+---
+ Makefile.def            |    1 +
+ Makefile.tpl            |    6 ++++++
+ fixincludes/Makefile.in |    5 +++--
+ gcc/Makefile.in         |    6 +++---
+ gcc/config.host         |    2 +-
+ gcc/configure.ac        |    4 ++--
+ gcc/gengtype-lex.c      |    1 -
+ libgcc/Makefile.in      |    2 +-
+ 8 files changed, 17 insertions(+), 10 deletions(-)
+
+diff --git a/Makefile.def b/Makefile.def
+index 90d9653..642f637 100644
+--- a/Makefile.def
++++ b/Makefile.def
+@@ -263,6 +263,7 @@ flags_to_pass = { flag= GOCFLAGS_FOR_TARGET ; };
+ flags_to_pass = { flag= LD_FOR_TARGET ; };
+ flags_to_pass = { flag= LIPO_FOR_TARGET ; };
+ flags_to_pass = { flag= LDFLAGS_FOR_TARGET ; };
++flags_to_pass = { flag= LIBS_FOR_TARGET ; };
+ flags_to_pass = { flag= LIBCFLAGS_FOR_TARGET ; };
+ flags_to_pass = { flag= LIBCXXFLAGS_FOR_TARGET ; };
+ flags_to_pass = { flag= NM_FOR_TARGET ; };
+diff --git a/Makefile.tpl b/Makefile.tpl
+index e81c095..92c10b8 100644
+--- a/Makefile.tpl
++++ b/Makefile.tpl
+@@ -156,6 +156,8 @@ BUILD_EXPORTS = \
+ 	CONFIG_SHELL="$(SHELL)"; export CONFIG_SHELL; \
+ 	CXX="$(CXX_FOR_BUILD)"; export CXX; \
+ 	CXXFLAGS="$(CXXFLAGS_FOR_BUILD)"; export CXXFLAGS; \
++	CPPFLAGS="$(CPPFLAGS_FOR_BUILD)"; export CPPFLAGS; \
++	LIBS="$(LIBS_FOR_BUILD)"; export LIBS; \
+ 	GCJ="$(GCJ_FOR_BUILD)"; export GCJ; \
+ 	GFORTRAN="$(GFORTRAN_FOR_BUILD)"; export GFORTRAN; \
+ 	GOC="$(GOC_FOR_BUILD)"; export GOC; \
+@@ -194,6 +196,8 @@ HOST_EXPORTS = \
+ 	CONFIG_SHELL="$(SHELL)"; export CONFIG_SHELL; \
+ 	CXX="$(CXX)"; export CXX; \
+ 	CXXFLAGS="$(CXXFLAGS)"; export CXXFLAGS; \
++	CPPFLAGS="$(CPPFLAGS)"; export CPPFLAGS; \
++	LIBS="$(LIBS)"; export LIBS; \
+ 	GCJ="$(GCJ)"; export GCJ; \
+ 	GFORTRAN="$(GFORTRAN)"; export GFORTRAN; \
+ 	GOC="$(GOC)"; export GOC; \
+@@ -278,6 +282,7 @@ BASE_TARGET_EXPORTS = \
+ 	CFLAGS="$(CFLAGS_FOR_TARGET)"; export CFLAGS; \
+ 	CONFIG_SHELL="$(SHELL)"; export CONFIG_SHELL; \
+ 	CPPFLAGS="$(CPPFLAGS_FOR_TARGET)"; export CPPFLAGS; \
++	LIBS="$(LIBS_FOR_TARGET)"; export LIBS; \
+ 	CXXFLAGS="$(CXXFLAGS_FOR_TARGET)"; export CXXFLAGS; \
+ 	GCJ="$(GCJ_FOR_TARGET) $(XGCC_FLAGS_FOR_TARGET) $$TFLAGS"; export GCJ; \
+ 	GFORTRAN="$(GFORTRAN_FOR_TARGET) $(XGCC_FLAGS_FOR_TARGET) $$TFLAGS"; export GFORTRAN; \
+@@ -644,6 +649,7 @@ EXTRA_TARGET_FLAGS = \
+ 	'CFLAGS=$$(CFLAGS_FOR_TARGET)' \
+ 	'CXX=$$(CXX_FOR_TARGET) $$(XGCC_FLAGS_FOR_TARGET) $$(TFLAGS)' \
+ 	'CXXFLAGS=$$(CXXFLAGS_FOR_TARGET)' \
++	'CPPFLAGS=$$(CPPFLAGS_FOR_TARGET)' \
+ 	'DLLTOOL=$$(DLLTOOL_FOR_TARGET)' \
+ 	'GCJ=$$(GCJ_FOR_TARGET) $$(XGCC_FLAGS_FOR_TARGET) $$(TFLAGS)' \
+ 	'GFORTRAN=$$(GFORTRAN_FOR_TARGET) $$(XGCC_FLAGS_FOR_TARGET) $$(TFLAGS)' \
+diff --git a/fixincludes/Makefile.in b/fixincludes/Makefile.in
+index ce850ff..437d3f4 100644
+--- a/fixincludes/Makefile.in
++++ b/fixincludes/Makefile.in
+@@ -28,6 +28,7 @@ STAMP = echo timestamp >
+ 
+ CC = @CC@
+ CFLAGS = @CFLAGS@
++CPPFLAGS = @CPPFLAGS@
+ WARN_CFLAGS = @WARN_CFLAGS@ @WARN_PEDANTIC@ @WERROR@
+ LDFLAGS = @LDFLAGS@
+ INCLUDES = -I. -I$(srcdir) -I../include -I$(srcdir)/../include
+@@ -107,11 +108,11 @@ oneprocess : full-stamp
+ twoprocess : test-stamp $(AF)
+ 
+ full-stamp : $(ALLOBJ) $(LIBIBERTY)
+-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(FI) $(ALLOBJ) $(LIBIBERTY)
++	$(CC) $(CFLAGS) $(LDFLAGS) -o $(FI) $(ALLOBJ) $(LIBIBERTY) $(LIBS)
+ 	$(STAMP) $@
+ 
+ test-stamp : $(TESTOBJ) $(LIBIBERTY)
+-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(FI) $(TESTOBJ) $(LIBIBERTY)
++	$(CC) $(CFLAGS) $(LDFLAGS) -o $(FI) $(TESTOBJ) $(LIBIBERTY) $(LIBS)
+ 	$(STAMP) $@
+ 
+ $(AF): $(FIXOBJ) $(LIBIBERTY)
+diff --git a/gcc/Makefile.in b/gcc/Makefile.in
+index 2a4475b..98c6235 100644
+--- a/gcc/Makefile.in
++++ b/gcc/Makefile.in
+@@ -748,7 +748,7 @@ BUILD_LINKERFLAGS = $(BUILD_CXXFLAGS)
+ # Native linker and preprocessor flags.  For x-fragment overrides.
+ BUILD_LDFLAGS=@BUILD_LDFLAGS@
+ BUILD_CPPFLAGS= -I. -I$(@D) -I$(srcdir) -I$(srcdir)/$(@D) \
+-		-I$(srcdir)/../include @INCINTL@ $(CPPINC) $(CPPFLAGS)
++		-I$(srcdir)/../include @INCINTL@ $(CPPINC) $(INCLUDES) $(CPPFLAGS_FOR_BUILD)
+ 
+ # Actual name to use when installing a native compiler.
+ GCC_INSTALL_NAME := $(shell echo gcc|sed '$(program_transform_name)')
+@@ -1019,8 +1019,8 @@ BUILD_LIBDEPS= $(BUILD_LIBIBERTY)
+ 
+ # How to link with both our special library facilities
+ # and the system's installed libraries.
+-LIBS = @LIBS@ libcommon.a $(CPPLIB) $(LIBINTL) $(LIBICONV) $(LIBBACKTRACE) \
+-	$(LIBIBERTY) $(LIBDECNUMBER) $(HOST_LIBS)
++LIBS = libcommon.a $(CPPLIB) $(LIBINTL) $(LIBICONV) $(LIBBACKTRACE) \
++	$(LIBIBERTY) $(LIBDECNUMBER) $(HOST_LIBS) @LIBS@
+ BACKENDLIBS = $(CLOOGLIBS) $(GMPLIBS) $(PLUGINLIBS) $(HOST_LIBS) \
+ 	$(ZLIB)
+ # Any system libraries needed just for GNAT.
+diff --git a/gcc/config.host b/gcc/config.host
+index 1196ec5..414d5ff 100644
+--- a/gcc/config.host
++++ b/gcc/config.host
+@@ -99,7 +99,7 @@ case ${host} in
+ esac
+ 
+ case ${host} in
+-  arm*-*-linux*)
++  arm*-*-*)
+     case ${target} in
+       arm*-*-*)
+ 	host_extra_gcc_objs="driver-arm.o"
+diff --git a/gcc/configure.ac b/gcc/configure.ac
+index 3ee1d67..004a185 100644
+--- a/gcc/configure.ac
++++ b/gcc/configure.ac
+@@ -1521,8 +1521,8 @@ else
+ 	# system.h from including gmp.h.
+ 	CC="${CC_FOR_BUILD}" CFLAGS="${CFLAGS_FOR_BUILD}" \
+ 	CXX="${CXX_FOR_BUILD}" CXXFLAGS="${CXXFLAGS_FOR_BUILD}" \
+-	LD="${LD_FOR_BUILD}" LDFLAGS="${LDFLAGS_FOR_BUILD}" \
+-	GMPINC="" CPPFLAGS="${CPPFLAGS} -DGENERATOR_FILE" \
++	LD="${LD_FOR_BUILD}" LDFLAGS="${LDFLAGS_FOR_BUILD}" LIBS="${LIBS_FOR_BUILD}" \
++	GMPINC="" CPPFLAGS="${CPPFLAGS_FOR_BUILD} -DGENERATOR_FILE" \
+ 	${realsrcdir}/configure \
+ 		--enable-languages=${enable_languages-all} \
+ 		--target=$target_alias --host=$build_alias --build=$build_alias
+diff --git a/gcc/gengtype-lex.c b/gcc/gengtype-lex.c
+index 244dd0d..ee29879 100644
+--- a/gcc/gengtype-lex.c
++++ b/gcc/gengtype-lex.c
+@@ -1,4 +1,3 @@
+-#include "bconfig.h"
+ #line 2 "gengtype-lex.c"
+ 
+ #line 4 "gengtype-lex.c"
+diff --git a/libgcc/Makefile.in b/libgcc/Makefile.in
+index db9b1b2..594fc6d 100644
+--- a/libgcc/Makefile.in
++++ b/libgcc/Makefile.in
+@@ -225,7 +225,7 @@ endif
+ LIBGCC2_DEBUG_CFLAGS = -g
+ LIBGCC2_CFLAGS = -O2 $(LIBGCC2_INCLUDES) $(GCC_CFLAGS) $(HOST_LIBGCC2_CFLAGS) \
+ 		 $(LIBGCC2_DEBUG_CFLAGS) -DIN_LIBGCC2 \
+-		 -fbuilding-libgcc -fno-stack-protector \
++		 -fno-stack-protector \
+ 		 $(INHIBIT_LIBC_CFLAGS)
+ 
+ # Additional options to use when compiling libgcc2.a.

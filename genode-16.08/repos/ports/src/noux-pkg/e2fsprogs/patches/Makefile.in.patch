@@ -1,0 +1,178 @@
++++ src/noux-pkg/e2fsprogs/debugfs/Makefile.in
+@@ -31,7 +31,7 @@ SRCS= debug_cmds.c $(srcdir)/debugfs.c $(srcdir)/util.c $(srcdir)/ls.c \
+ 	$(srcdir)/filefrag.c $(srcdir)/extent_inode.c $(srcdir)/zap.c
+ 
+ LIBS= $(LIBEXT2FS) $(LIBE2P) $(LIBSS) $(LIBCOM_ERR) $(LIBBLKID) \
+-	$(LIBUUID)
++	$(LIBUUID) @LIBS@
+ DEPLIBS= $(LIBEXT2FS) $(LIBE2P) $(DEPLIBSS) $(DEPLIBCOM_ERR) \
+ 	$(DEPLIBBLKID) $(DEPLIBUUID)
+ 
++++ src/noux-pkg/e2fsprogs/e2fsck/Makefile.in
+@@ -16,7 +16,7 @@ MANPAGES=	e2fsck.8
+ FMANPAGES=	e2fsck.conf.5
+ 
+ LIBS= $(LIBQUOTA) $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBBLKID) $(LIBUUID) \
+-	$(LIBINTL) $(LIBE2P)
++	$(LIBINTL) $(LIBE2P) @LIBS@
+ DEPLIBS= $(DEPLIBQUOTA) $(LIBEXT2FS) $(DEPLIBCOM_ERR) $(DEPLIBBLKID) \
+ 	 $(DEPLIBUUID) $(DEPLIBE2P)
+ 
++++ src/noux-pkg/e2fsprogs/ext2ed/Makefile.in
+@@ -16,7 +16,7 @@ MANPAGES=	ext2ed.8
+ 
+ DOC_DIR		=	$datadir/doc/ext2ed
+ 
+-LIBS		=	-lncurses $(LIBEXT2FS)
++LIBS		=	-lncurses $(LIBEXT2FS) @LIBS@
+ 
+ SRCS=	$(srcdir)/main.c $(srcdir)/init.c $(srcdir)/general_com.c       \
+ 	$(srcdir)/inode_com.c $(srcdir)/dir_com.c $(srcdir)/super_com.c \
++++ src/noux-pkg/e2fsprogs/intl/Makefile.in
+@@ -191,7 +191,7 @@ LTV_AGE=4
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(COMPILE) $<
+-	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
++	#$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+ 
+ .y.c:
+ 	$(YACC) $(YFLAGS) --output $@ $<
++++ src/noux-pkg/e2fsprogs/lib/blkid/Makefile.in
+@@ -127,7 +127,7 @@ tst_types: tst_types.o blkid_types.h
+ 
+ blkid: ../../misc/blkid.o libblkid.a $(DEPLIBUUID)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) -o blkid ../../misc/blkid.o libblkid.a $(LIBUUID)
++	$(Q) $(CC) -o blkid ../../misc/blkid.o libblkid.a $(LIBUUID) @LIBS@
+ 
+ test_probe: test_probe.in Makefile
+ 	$(E) "Creating test_probe..."
++++ src/noux-pkg/e2fsprogs/lib/uuid/Makefile.in
+@@ -83,12 +83,12 @@ tst_uuid.o: $(srcdir)/tst_uuid.c uuid.h
+ 
+ tst_uuid: tst_uuid.o $(DEPSTATIC_LIBUUID)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o tst_uuid tst_uuid.o $(STATIC_LIBUUID)
++	$(Q) $(CC) $(ALL_LDFLAGS) -o tst_uuid tst_uuid.o $(STATIC_LIBUUID) @LIBS@
+ 
+ uuid_time: $(srcdir)/uuid_time.c $(DEPLIBUUID)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_CFLAGS) $(LDFLAGS) -DDEBUG -o uuid_time \
+-		$(srcdir)/uuid_time.c $(LIBUUID)
++		$(srcdir)/uuid_time.c $(LIBUUID) @LIBS@
+ 
+ uuid.3: $(DEP_SUBSTITUTE) $(srcdir)/uuid.3.in
+ 	$(E) "	SUBST $@"
++++ src/noux-pkg/e2fsprogs/misc/Makefile.in
+@@ -84,7 +84,7 @@ SRCS=	$(srcdir)/tune2fs.c $(srcdir)/mklost+found.c $(srcdir)/mke2fs.c \
+ 		$(srcdir)/ismounted.c $(srcdir)/../e2fsck/profile.c \
+ 		$(srcdir)/e2undo.c $(srcdir)/e2freefrag.c
+ 
+-LIBS= $(LIBEXT2FS) $(LIBCOM_ERR) 
++LIBS= $(LIBEXT2FS) $(LIBCOM_ERR) @LIBS@
+ DEPLIBS= $(LIBEXT2FS) $(DEPLIBCOM_ERR)
+ PROFILED_LIBS= $(PROFILED_LIBEXT2FS) $(PROFILED_LIBCOM_ERR)
+ PROFILED_DEPLIBS= $(PROFILED_LIBEXT2FS) $(DEPPROFILED_LIBCOM_ERR)
+@@ -178,7 +178,7 @@ tune2fs.profiled: $(TUNE2FS_OBJS) $(PROFILED_DEPLIBS) \
+ blkid: $(BLKID_OBJS) $(DEPLIBBLKID) $(LIBEXT2FS)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o blkid $(BLKID_OBJS) $(LIBBLKID) $(LIBINTL) \
+-		$(LIBEXT2FS)
++		$(LIBEXT2FS) @LIBS@
+ 
+ blkid.static: $(BLKID_OBJS) $(STATIC_DEPLIBS) $(DEPSTATIC_LIBBLKID)
+ 	$(E) "	LD $@"
+@@ -229,7 +229,7 @@ check:: base_device
+ 
+ mklost+found: $(MKLPF_OBJS)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o mklost+found $(MKLPF_OBJS) $(LIBINTL)
++	$(Q) $(CC) $(ALL_LDFLAGS) -o mklost+found $(MKLPF_OBJS) $(LIBINTL) @LIBS@
+ 
+ mke2fs: $(MKE2FS_OBJS) $(DEPLIBS) $(LIBE2P) $(DEPLIBBLKID) $(DEPLIBUUID) \
+ 		$(DEPLIBQUOTA) $(LIBEXT2FS)
+@@ -255,15 +255,15 @@ mke2fs.profiled: $(MKE2FS_OBJS) $(PROFILED_DEPLIBS) \
+ 
+ chattr: $(CHATTR_OBJS) $(DEPLIBS_E2P)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o chattr $(CHATTR_OBJS) $(LIBS_E2P) $(LIBINTL)
++	$(Q) $(CC) $(ALL_LDFLAGS) -o chattr $(CHATTR_OBJS) $(LIBS_E2P) $(LIBINTL) @LIBS@
+ 
+ lsattr: $(LSATTR_OBJS) $(DEPLIBS_E2P)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o lsattr $(LSATTR_OBJS) $(LIBS_E2P) $(LIBINTL)
++	$(Q) $(CC) $(ALL_LDFLAGS) -o lsattr $(LSATTR_OBJS) $(LIBS_E2P) $(LIBINTL) @LIBS@
+ 
+ uuidgen: $(UUIDGEN_OBJS) $(DEPLIBUUID)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o uuidgen $(UUIDGEN_OBJS) $(LIBUUID) $(LIBINTL)
++	$(Q) $(CC) $(ALL_LDFLAGS) -o uuidgen $(UUIDGEN_OBJS) $(LIBUUID) $(LIBINTL) @LIBS@
+ 
+ uuidgen.profiled: $(UUIDGEN_OBJS) $(PROFILED_DEPLIBUUID)
+ 	$(E) "	LD $@"
+@@ -272,7 +272,7 @@ uuidgen.profiled: $(UUIDGEN_OBJS) $(PROFILED_DEPLIBUUID)
+ 
+ uuidd: $(UUIDD_OBJS) $(DEPLIBUUID)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o uuidd $(UUIDD_OBJS) $(LIBUUID) $(LIBINTL)
++	$(Q) $(CC) $(ALL_LDFLAGS) -o uuidd $(UUIDD_OBJS) $(LIBUUID) $(LIBINTL) @LIBS@
+ 
+ uuidd.profiled: $(UUIDD_OBJS) $(PROFILED_DEPLIBUUID)
+ 	$(E) "	LD $@"
+@@ -293,7 +293,7 @@ dumpe2fs.profiled: $(DUMPE2FS_OBJS) $(PROFILED_DEPLIBS) \
+ 
+ fsck: $(FSCK_OBJS) $(DEPLIBBLKID)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o fsck $(FSCK_OBJS) $(LIBBLKID) $(LIBINTL)
++	$(Q) $(CC) $(ALL_LDFLAGS) -o fsck $(FSCK_OBJS) $(LIBBLKID) $(LIBINTL) @LIBS@
+ 
+ fsck.profiled: $(FSCK_OBJS) $(PROFILED_DEPLIBBLKID)
+ 	$(E) "	LD $@"
+@@ -311,7 +311,7 @@ badblocks.profiled: $(BADBLOCKS_OBJS) $(PROFILED_DEPLIBS)
+ 
+ logsave: logsave.o
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o logsave logsave.o
++	$(Q) $(CC) $(ALL_LDFLAGS) -o logsave logsave.o @LIBS@
+ 
+ logsave.profiled: logsave.o
+ 	$(E) "	LD $@"
+@@ -328,7 +328,7 @@ e2freefrag.profiled: $(E2FREEFRAG_OBJS) $(PROFILED_DEPLIBS)
+ 
+ filefrag: $(FILEFRAG_OBJS)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o filefrag $(FILEFRAG_OBJS) 
++	$(Q) $(CC) $(ALL_LDFLAGS) -o filefrag $(FILEFRAG_OBJS) @LIBS@
+ 
+ filefrag.profiled: $(FILEFRAG_OBJS)
+ 	$(E) "	LD $@"
++++ src/noux-pkg/e2fsprogs/resize/Makefile.in
+@@ -28,7 +28,7 @@ SRCS= $(srcdir)/extent.c \
+ 	$(srcdir)/resource_track.c \
+ 	$(srcdir)/sim_progress.c
+ 
+-LIBS= $(LIBE2P) $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBINTL)
++LIBS= $(LIBE2P) $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBINTL) @LIBS@
+ DEPLIBS= $(LIBE2P) $(LIBEXT2FS) $(DEPLIBCOM_ERR)
+ 
+ STATIC_LIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) \
++++ src/noux-pkg/e2fsprogs/tests/progs/Makefile.in
+@@ -37,7 +37,7 @@ test_rel: $(TEST_REL_OBJS) $(DEPLIBS)
+ 
+ crcsum: crcsum.o $(DEPLIBS)
+ 	$(E) "	LD $@"
+-	$(Q) $(LD) $(ALL_LDFLAGS) -o crcsum crcsum.o $(LIBS)
++	$(Q) $(LD) $(ALL_LDFLAGS) -o crcsum crcsum.o $(LIBS) @LIBS@
+ 
+ test_rel_cmds.c: test_rel_cmds.ct
+ 	$(E) "	MK_CMDS $@"
+@@ -45,7 +45,7 @@ test_rel_cmds.c: test_rel_cmds.ct
+ 
+ test_icount: $(TEST_ICOUNT_OBJS) $(DEPLIBS)
+ 	$(E) "	LD $@"
+-	$(Q) $(LD) $(ALL_LDFLAGS) -o test_icount $(TEST_ICOUNT_OBJS) $(LIBS)
++	$(Q) $(LD) $(ALL_LDFLAGS) -o test_icount $(TEST_ICOUNT_OBJS) $(LIBS) @LIBS@
+ 
+ test_icount_cmds.c: test_icount_cmds.ct
+ 	$(E) "	MK_CMDS $@"

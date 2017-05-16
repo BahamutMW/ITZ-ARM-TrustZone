@@ -1,0 +1,44 @@
+build {
+	core init server/log_terminal noux/minimal lib/libc_noux test/noux_fork
+}
+
+create_boot_directory
+
+install_config {
+	<config verbose="yes">
+		<parent-provides>
+			<service name="ROM"/>
+			<service name="LOG"/>
+			<service name="RAM"/>
+			<service name="RM"/>
+			<service name="CPU"/>
+			<service name="PD"/>
+			<service name="IRQ"/>
+			<service name="IO_MEM"/>
+			<service name="IO_PORT"/>
+		</parent-provides>
+		<default-route>
+			<any-service> <any-child/> <parent/> </any-service>
+		</default-route>
+		<start name="log_terminal">
+			<resource name="RAM" quantum="2M"/>
+			<provides><service name="Terminal"/></provides>
+		</start>
+		<start name="noux">
+			<resource name="RAM" quantum="1G"/>
+			<config verbose="yes">
+				<fstab> <rom name="test-noux_fork" /> </fstab>
+				<start name="test-noux_fork"> </start>
+			</config>
+		</start>
+	</config>
+}
+
+build_boot_image {
+	core init log_terminal noux ld.lib.so libc.lib.so libc_noux.lib.so
+	test-noux_fork
+}
+
+append qemu_args " -nographic "
+
+run_genode_until "child.*exited.*\n" 20

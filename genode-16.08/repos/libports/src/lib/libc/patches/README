@@ -1,0 +1,28 @@
+Manual modifications
+####################
+
+:'src/lib/include/rpcsvc/nis.x':
+
+  CPP seems not to be able to parse splitted lines and so fails with
+  'definition keyword expected' otherwise (though that's just a rough guess).
+
+:'src/lib/libc/stdlib/malloc.c':
+
+  Undefine 'MALLOC_DSS' to avoid the usage of sbrk.
+  ! //#define	MALLOC_DSS
+
+:'src/lib/libc/stdio/vfwprintf.c':
+
+  Fix warnings caused by conversions between (char *) and (wchar_t *).
+  This is just a cosmetic fix.
+
+:'src/lib/libc/gen/_pthread_stubs.c':
+
+  Prevent definition of symbol 'pthread_cancel'. This symbol is provided by the
+  C++ support library as weak symbol. By redefining this symbol as non-weak in
+  the libc, the C++ support library would use the libc dummy stub instead its
+  own implementation, causing problems with handling exceptions.
+
+:'src/lib/libc/resolv/res_send.c':
+
+  Disable usage of kqueue and fix building libresolv when kqueue is disabled.

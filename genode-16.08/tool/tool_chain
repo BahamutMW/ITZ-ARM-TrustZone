@@ -1,0 +1,487 @@
+#!/usr/bin/make -f
+#
+# \brief  Tool-chain creation tool for the Genode OS Framework
+# \author Norman Feske
+# \date   2009-02-03
+#
+
+help:
+	$(ECHO)
+	$(ECHO) "Build tool chain for the Genode OS Framework"
+	$(ECHO)
+	$(ECHO) "The tool chain consists of GCC $(GCC_VERSION) and binutils $(BINUTILS_VERSION)"
+	$(ECHO) "and will be created at '$(LOCAL_INSTALL_LOCATION)'."
+	$(ECHO)
+	$(ECHO) "--- available commands ---"
+	$(ECHO) "x86        - create tool chain for x86"
+	$(ECHO) "arm        - create tool chain for arm"
+	$(ECHO) "riscv      - create tool chain for riscv"
+	$(ECHO) "clean      - clean everything except downloaded archives"
+	$(ECHO) "cleanall   - clean everything including downloaded archives"
+	$(ECHO)
+
+#
+# User interface
+#
+
+SUPPORTED_PLATFORMS := x86 arm riscv
+
+PLATFORM := $(firstword $(filter $(SUPPORTED_PLATFORMS),$(MAKECMDGOALS)))
+
+$(SUPPORTED_PLATFORMS): install
+
+#
+# Enable parallel build for 2nd-level $(MAKE) by default
+#
+
+MAKE_OPT ?= -j4
+
+#
+# Determine Genode base directory based on the known location of the
+# 'create_builddir' tool within the Genode source tree
+#
+
+GENODE_DIR ?= $(realpath $(dir $(firstword $(MAKEFILE_LIST)))/..)
+
+#
+# Download locations
+#
+
+DOWNLOAD_MIRROR      ?= ftp://ftp.fu-berlin.de
+GCC_DOWNLOAD_URL      = $(DOWNLOAD_MIRROR)/gnu/gcc
+BINUTILS_DOWNLOAD_URL = $(DOWNLOAD_MIRROR)/gnu/binutils
+GDB_DOWNLOAD_URL      = $(DOWNLOAD_MIRROR)/gnu/gdb
+GMP_DOWNLOAD_URL      = $(DOWNLOAD_MIRROR)/gnu/gmp
+MPFR_DOWNLOAD_URL     = $(DOWNLOAD_MIRROR)/gnu/mpfr
+MPC_DOWNLOAD_URL     ?= http://www.multiprecision.org/mpc/download
+
+
+#
+# Tool versions and install location
+#
+
+GCC_VERSION       = 4.9.2
+BINUTILS_VERSION  = 2.25
+GDB_VERSION       = 7.3.1
+GMP_VERSION       = 5.0.2
+MPFR_VERSION      = 3.1.0
+MPC_VERSION       = 0.9
+INSTALL_LOCATION  = /usr/local/genode-gcc
+DOWNLOAD_DIR      = download
+CONTRIB_DIR       = contrib
+SIGVERIFIER       = $(GENODE_DIR)/tool/download_sigver
+
+BINUTILS_DOWNLOAD_TBZ2 = binutils-$(BINUTILS_VERSION).tar.bz2
+
+# download file name differs from dir name found within the archive
+ifeq ($(BINUTILS_VERSION),2.21.1)
+BINUTILS_DOWNLOAD_TBZ2 = binutils-$(BINUTILS_VERSION)a.tar.bz2
+endif
+
+#
+# Utilities
+#
+
+##
+# Return $(2) if $(1) is empty, "" else
+#
+check_nonempty_f = $(if $(1),,$(info $(2))$(2))
+
+##
+# Return $(3) if $(1) != $(2), "" else
+#
+check_equal_f = $(if $(filter $(1),$(2)),,$(info $(3))$(3))
+
+
+SHELL       = bash
+BRIGHT_COL  = \033[01;33m
+DEFAULT_COL = \033[0m
+ECHO        = @echo -e
+VERBOSE     = @
+
+#
+# Check if 'autoconf' is installed
+#
+AUTOCONF_VERSION_gcc_4.9.2 = 2.64
+
+AUTOCONF_VERSION = $(AUTOCONF_VERSION_gcc_$(GCC_VERSION))
+
+ifeq ($(AUTOCONF_VERSION),)
+$(error Unknown autoconf version for GCC $(GCC_VERSION).)
+endif
+
+AUTOCONF_VERSION_STRING = "autoconf (GNU Autoconf) $(AUTOCONF_VERSION)"
+ifeq ($(shell autoconf -V | grep $(AUTOCONF_VERSION_STRING)),)
+  ifeq ($(shell which autoconf$(AUTOCONF_VERSION)),)
+    ifneq ($(shell which autoconf-$(AUTOCONF_VERSION)),)
+      AUTOCONF = autoconf-$(AUTOCONF_VERSION)
+    endif
+  else
+    AUTOCONF = autoconf$(AUTOCONF_VERSION)
+  endif
+else
+  AUTOCONF = autoconf
+endif
+
+AUTOCONFINST_OK = $(call check_nonempty_f,$(AUTOCONF),\
+                    Need to have 'autoconf-$(AUTOCONF_VERSION)' installed.)
+
+#
+# Check if 'pkg-config' is installed
+#
+PKG_CONFIG_OK = $(call check_nonempty_f,$(shell which pkg-config),\
+                Need to have 'pkg-config' installed.)
+
+#
+# Check if 'libncurses' is installed
+#
+CURSES_OK = $(call check_equal_f,\
+              $(shell pkg-config --exists ncurses && echo ok),ok,\
+              Need to have 'libncurses' installed.)
+
+#
+# Check if 'texinfo' is installed
+#
+TEXINFO_OK = $(call check_nonempty_f,$(shell which texi2pdf),\
+               Need to have 'texinfo' installed.)
+
+#
+# Check if 'wget' is installed
+#
+WGET_OK = $(call check_nonempty_f,$(shell which wget),\
+            Need to have 'wget' installed.)
+
+#
+# Check if 'autogen' is installed
+#
+AUTOGEN_OK = $(call check_nonempty_f,$(shell which autogen),\
+               Need to have 'autogen' installed.)
+
+#
+# Check if 'gpg' is installed
+#
+GPG_OK = $(call check_nonempty_f,$(shell which gpg),\
+           Need to have 'gpg' installed.)
+
+#
+# Check if 'libexpat' is installed
+#
+EXPAT_OK = $(call check_equal_f,\
+             $(shell pkg-config --exists expat && echo ok),ok,\
+             Need to have 'libexpat' installed.)
+
+
+TOOLS_OK = $(AUTOCONF_OK) $(AUTOCONFINST_OK) $(PKG_CONFIG_OK) $(CURSES_OK) \
+           $(TEXINFO_OK) $(WGET_OK) $(AUTOGEN_OK) $(GPG_OK) $(EXPAT_OK)
+
+ifneq ($(strip $(TOOLS_OK)),)
+$(error Please install missing tools.)
+endif
+
+#
+# 'configure' parameters for binutils, gcc and gdb
+#
+
+LOCAL_INSTALL_LOCATION = $(shell pwd)/build/install
+
+#
+# Local install location for gmp, mpfr, and mpc libraries. These libraries are
+# requried at build time of gcc. We install them locally before invoking the
+# gcc build. Because the libs do not need to be included in the tool-chain
+# package (they are statically linked against gcc), we install them to a
+# different install location as gcc.
+#
+LOCAL_LIB_INSTALL_LOCATION = $(shell pwd)/build/lib-install
+
+TARGET_NAME_x86        = x86_64-pc-elf
+TARGET_NAME_arm        = arm-none-eabi
+TARGET_NAME_riscv      = riscv-unknown-elf
+
+ifneq ($(VERBOSE),)
+CONFIG_QUIET = --quiet
+MAKEFLAGS   += --quiet
+export MAKEFLAGS
+endif
+
+COMMON_CONFIG = $(CONFIG_QUIET) \
+                --prefix=$(LOCAL_INSTALL_LOCATION) \
+                --program-prefix=genode-$(PLATFORM)- \
+                --target=$(TARGET_NAME_$(PLATFORM)) \
+                --program-transform-name="s/$(TARGET_NAME_$(PLATFORM))/$(PLATFORM)/"
+
+BINUTILS_CONFIG += $(COMMON_CONFIG) --disable-werror
+
+#
+# Prevent GNU assembler from treating '/' as the start of a comment. In
+# 'gas/config/tc-i386.c', the policy of handling '/' is defined. For Linux, '/'
+# is treated as division, which we expect. To apply this needed policy for our
+# plain 'elf' version gas, we supply the definition of 'TE_LINUX' by hand.
+# Fortunately, this define is not used outside of gas.
+#
+BINUTILS_CONFIG += CFLAGS=-DTE_LINUX
+
+#
+# Add platform-specific binutils configure arguments
+#
+BINUTILS_CONFIG += $(BINUTILS_CONFIG_$(PLATFORM))
+
+#
+# GDB configure arguments
+#
+GDB_CONFIG += $(COMMON_CONFIG) --disable-werror
+
+GCC_CONFIG += $(COMMON_CONFIG) \
+              --enable-languages=c,c++,go \
+              --disable-libgo \
+              --disable-libssp \
+              --disable-libquadmath \
+              --disable-libffi \
+              --enable-targets=all \
+              --with-gnu-as \
+              --with-gnu-ld \
+              --disable-tls \
+              --disable-threads \
+              --disable-hosted-libstdcxx \
+              --enable-shared \
+              --enable-multiarch \
+              --disable-sjlj-exceptions \
+              --with-gmp=$(LOCAL_LIB_INSTALL_LOCATION) \
+              --with-mpfr=$(LOCAL_LIB_INSTALL_LOCATION) \
+              --with-mpc=$(LOCAL_LIB_INSTALL_LOCATION) \
+              CFLAGS_FOR_TARGET="-I$(GENODE_DIR)/tool -DUSE_PT_GNU_EH_FRAME -Dinhibit_libc -fPIC" \
+              CXXFLAGS_FOR_TARGET="-fPIC"
+
+GCC_CONFIG += $(GCC_CONFIG_$(PLATFORM))
+
+#
+# Configure options passed to gcc
+#
+HOST_CONFIG_ARGS = $(CONFIG_QUIET)
+
+#
+# Passed to target components such as libgcc, libstdc++
+#
+TARGET_CONFIG_ARGS = $(CONFIG_QUIET)
+
+GCC_INSTALL_RULE = install-strip
+
+#
+# Platform-specific multilib support
+#
+
+MAKE_OPT_x86 := MULTILIB_OPTIONS="m64/m32" MULTILIB_DIRNAMES="64 32"
+MAKE_OPT += $(MAKE_OPT_$(PLATFORM))
+
+#
+# Build rules and dependencies between build steps
+#
+# We use the binaries 'objdump' and 'g++' as representatives for expressing
+# dependencies. All other programs will be generated as side effect.
+#
+
+BINUTILS_BINARIES           = build/$(PLATFORM)/binutils/binutils/objdump
+BINUTILS_INSTALLED_BINARIES = $(LOCAL_INSTALL_LOCATION)/bin/genode-$(PLATFORM)-objdump
+GCC_BINARIES                = build/$(PLATFORM)/gcc/gcc/g++
+GCC_INSTALLED_BINARIES      = $(LOCAL_INSTALL_LOCATION)/bin/genode-$(PLATFORM)-g++
+GDB_BINARIES                = build/$(PLATFORM)/gdb/gdb/gdb
+
+ifeq ($(PLATFORM),riscv)
+GDB_INSTALLED_BINARIES      =
+else
+GDB_INSTALLED_BINARIES      = $(LOCAL_INSTALL_LOCATION)/bin/genode-$(PLATFORM)-gdb
+endif
+
+build_all: $(GCC_INSTALLED_BINARIES) $(GDB_INSTALLED_BINARIES)
+
+$(DOWNLOAD_DIR):
+	$(VERBOSE)mkdir -p $@
+
+$(DOWNLOAD_DIR)/$(BINUTILS_DOWNLOAD_TBZ2): $(DOWNLOAD_DIR)
+	$(ECHO) "$(BRIGHT_COL)downloading binutils...$(DEFAULT_COL)"
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(BINUTILS_DOWNLOAD_URL)/$(BINUTILS_DOWNLOAD_TBZ2) && touch $@
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(BINUTILS_DOWNLOAD_URL)/$(BINUTILS_DOWNLOAD_TBZ2).sig && touch $@
+	$(VERBOSE)$(SIGVERIFIER) $(DOWNLOAD_DIR)/$(BINUTILS_DOWNLOAD_TBZ2) $(DOWNLOAD_DIR)/$(BINUTILS_DOWNLOAD_TBZ2).sig GNU
+
+$(DOWNLOAD_DIR)/gcc-$(GCC_VERSION).tar.bz2: $(DOWNLOAD_DIR)
+	$(ECHO) "$(BRIGHT_COL)downloading gcc...$(DEFAULT_COL)"
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(GCC_DOWNLOAD_URL)/gcc-$(GCC_VERSION)/gcc-$(GCC_VERSION).tar.bz2 && touch $@
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(GCC_DOWNLOAD_URL)/gcc-$(GCC_VERSION)/gcc-$(GCC_VERSION).tar.bz2.sig && touch $@
+	$(VERBOSE)$(SIGVERIFIER) $(DOWNLOAD_DIR)/gcc-$(GCC_VERSION).tar.bz2 $(DOWNLOAD_DIR)/gcc-$(GCC_VERSION).tar.bz2.sig GNU
+
+$(DOWNLOAD_DIR)/gmp-$(GMP_VERSION).tar.bz2: $(DOWNLOAD_DIR)
+	$(ECHO) "$(BRIGHT_COL)downloading gmp...$(DEFAULT_COL)"
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(GMP_DOWNLOAD_URL)/gmp-$(GMP_VERSION).tar.bz2 && touch $@
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(GMP_DOWNLOAD_URL)/gmp-$(GMP_VERSION).tar.bz2.sig && touch $@
+	$(VERBOSE)$(SIGVERIFIER) $(DOWNLOAD_DIR)/gmp-$(GMP_VERSION).tar.bz2 $(DOWNLOAD_DIR)/gmp-$(GMP_VERSION).tar.bz2.sig GNU
+
+$(DOWNLOAD_DIR)/mpfr-$(MPFR_VERSION).tar.bz2: $(DOWNLOAD_DIR)
+	$(ECHO) "$(BRIGHT_COL)downloading mpfr...$(DEFAULT_COL)"
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(MPFR_DOWNLOAD_URL)/mpfr-$(MPFR_VERSION).tar.bz2 && touch $@
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(MPFR_DOWNLOAD_URL)/mpfr-$(MPFR_VERSION).tar.bz2.sig && touch $@
+	$(VERBOSE)$(SIGVERIFIER) $(DOWNLOAD_DIR)/mpfr-$(MPFR_VERSION).tar.bz2 $(DOWNLOAD_DIR)/mpfr-$(MPFR_VERSION).tar.bz2.sig
+
+$(DOWNLOAD_DIR)/mpc-$(MPC_VERSION).tar.gz: $(DOWNLOAD_DIR)
+	$(ECHO) "$(BRIGHT_COL)downloading mpc...$(DEFAULT_COL)"
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(MPC_DOWNLOAD_URL)/mpc-$(MPC_VERSION).tar.gz && touch $@
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(MPC_DOWNLOAD_URL)/mpc-$(MPC_VERSION).tar.gz.asc && touch $@
+	# GPG key from http://www.multiprecision.org/index.php?prog=mpc&page=download
+	$(VERBOSE)$(SIGVERIFIER) $(DOWNLOAD_DIR)/mpc-$(MPC_VERSION).tar.gz $(DOWNLOAD_DIR)/mpc-$(MPC_VERSION).tar.gz.asc AD17A21EF8AED8F1CC02DBD9F7D5C9BF765C61E3
+
+$(CONTRIB_DIR)/gmp-$(GMP_VERSION)/configure: $(DOWNLOAD_DIR)/gmp-$(GMP_VERSION).tar.bz2
+	$(ECHO) "$(BRIGHT_COL)unpacking gmp...$(DEFAULT_COL)"
+	$(VERBOSE)tar xfj $< -C $(CONTRIB_DIR)
+
+$(CONTRIB_DIR)/mpfr-$(MPFR_VERSION)/configure: $(DOWNLOAD_DIR)/mpfr-$(MPFR_VERSION).tar.bz2
+	$(ECHO) "$(BRIGHT_COL)unpacking mpfr...$(DEFAULT_COL)"
+	$(VERBOSE)tar xfj $< -C $(CONTRIB_DIR)
+
+$(CONTRIB_DIR)/mpc-$(MPC_VERSION)/configure: $(DOWNLOAD_DIR)/mpc-$(MPC_VERSION).tar.gz
+	$(ECHO) "$(BRIGHT_COL)unpacking mpc...$(DEFAULT_COL)"
+	$(VERBOSE)tar xfz $< -C $(CONTRIB_DIR)
+
+$(CONTRIB_DIR)/gcc-$(GCC_VERSION): $(addprefix $(DOWNLOAD_DIR)/,gcc-$(GCC_VERSION).tar.bz2)
+	$(ECHO) "$(BRIGHT_COL)unpacking gcc...$(DEFAULT_COL)"
+	$(VERBOSE)mkdir -p $(CONTRIB_DIR)
+	$(VERBOSE)for i in $^ ; do tar xfj $$i -C $(CONTRIB_DIR) ;done
+	$(VERBOSE)touch $@
+
+include $(GENODE_DIR)/tool/tool_chain_gcc_patches.inc
+
+$(CONTRIB_DIR)/binutils-$(BINUTILS_VERSION): $(addprefix $(DOWNLOAD_DIR)/,$(BINUTILS_DOWNLOAD_TBZ2))
+	$(ECHO) "$(BRIGHT_COL)unpacking binutils...$(DEFAULT_COL)"
+	$(VERBOSE)mkdir -p $(CONTRIB_DIR)
+	$(VERBOSE)tar xfj $^ -C $(CONTRIB_DIR) && touch $@
+
+include $(GENODE_DIR)/tool/tool_chain_binutils_patches.inc
+
+build/$(PLATFORM)/binutils/Makefile: $(CONTRIB_DIR)/binutils-$(BINUTILS_VERSION)/configure
+	$(ECHO) "$(BRIGHT_COL)configuring binutils...$(DEFAULT_COL)"
+	$(VERBOSE)mkdir -p $(dir $@)
+	$(VERBOSE)cd $(dir $@); $(shell pwd)/$(CONTRIB_DIR)/binutils-$(BINUTILS_VERSION)/configure $(BINUTILS_CONFIG)
+
+$(BINUTILS_BINARIES): build/$(PLATFORM)/binutils/Makefile
+	$(ECHO) "$(BRIGHT_COL)builing binutils...$(DEFAULT_COL)"
+	$(VERBOSE)$(MAKE) -C $(dir $<) $(MAKE_OPT)
+
+$(BINUTILS_INSTALLED_BINARIES): $(BINUTILS_BINARIES)
+	$(ECHO) "$(BRIGHT_COL)installing binutils...$(DEFAULT_COL)"
+	$(VERBOSE)for i in binutils gas ld intl opcodes; do \
+		$(MAKE) -C build/$(PLATFORM)/binutils/$$i install-strip; done
+	$(VERBOSE)$(MAKE) -C build/$(PLATFORM)/binutils/libiberty install
+
+COMMON_LIB_CONFIG = --prefix=$(LOCAL_LIB_INSTALL_LOCATION) \
+                    --disable-shared --enable-static
+
+GMP_CONFIG  = $(COMMON_LIB_CONFIG)
+MPFR_CONFIG = $(COMMON_LIB_CONFIG) --with-gmp=$(LOCAL_LIB_INSTALL_LOCATION)
+MPC_CONFIG  = $(COMMON_LIB_CONFIG) --with-gmp=$(LOCAL_LIB_INSTALL_LOCATION) \
+                                   --with-mpfr=$(LOCAL_LIB_INSTALL_LOCATION)
+
+$(LOCAL_LIB_INSTALL_LOCATION)/lib/libgmp.a:  build/gmp/Makefile
+$(LOCAL_LIB_INSTALL_LOCATION)/lib/libmpfr.a: build/mpfr/Makefile
+$(LOCAL_LIB_INSTALL_LOCATION)/lib/libmpc.a:  build/mpc/Makefile
+
+# rule to build libgmp, libmpfr, and libmpc
+$(LOCAL_LIB_INSTALL_LOCATION)/lib/lib%.a:
+	$(ECHO) "$(BRIGHT_COL)building lib$*...$(DEFAULT_COL)"
+	$(VERBOSE)make -C build/$* all install
+
+build/gmp/Makefile: $(CONTRIB_DIR)/gmp-$(GMP_VERSION)/configure
+
+build/gmp/Makefile:
+	$(ECHO) "$(BRIGHT_COL)configuring libgmp...$(DEFAULT_COL)"
+	$(VERBOSE)mkdir -p $(dir $@)
+	$(VERBOSE)cd $(dir $@); \
+		$(shell pwd)/$(CONTRIB_DIR)/gmp-$(GMP_VERSION)/configure $(GMP_CONFIG)
+
+build/mpfr/Makefile: $(CONTRIB_DIR)/mpfr-$(MPFR_VERSION)/configure \
+                     $(LOCAL_LIB_INSTALL_LOCATION)/lib/libgmp.a
+
+build/mpfr/Makefile:
+	$(ECHO) "$(BRIGHT_COL)configuring libmpfr...$(DEFAULT_COL)"
+	$(VERBOSE)mkdir -p $(dir $@)
+	$(VERBOSE)cd $(dir $@); \
+		$(shell pwd)/$(CONTRIB_DIR)/mpfr-$(MPFR_VERSION)/configure $(MPFR_CONFIG)
+
+build/mpc/Makefile: $(CONTRIB_DIR)/mpc-$(MPC_VERSION)/configure \
+                    $(LOCAL_LIB_INSTALL_LOCATION)/lib/libgmp.a \
+                    $(LOCAL_LIB_INSTALL_LOCATION)/lib/libmpfr.a
+
+build/mpc/Makefile:
+	$(ECHO) "$(BRIGHT_COL)configuring libmpc...$(DEFAULT_COL)"
+	$(VERBOSE)mkdir -p $(dir $@)
+	$(VERBOSE)cd $(dir $@); \
+		$(shell pwd)/$(CONTRIB_DIR)/mpc-$(MPC_VERSION)/configure $(MPC_CONFIG)
+
+build/$(PLATFORM)/gcc/Makefile: $(CONTRIB_DIR)/gcc-$(GCC_VERSION)/configure \
+                                $(BINUTILS_INSTALLED_BINARIES) \
+                                $(LOCAL_LIB_INSTALL_LOCATION)/lib/libgmp.a \
+                                $(LOCAL_LIB_INSTALL_LOCATION)/lib/libmpfr.a \
+                                $(LOCAL_LIB_INSTALL_LOCATION)/lib/libmpc.a
+
+build/$(PLATFORM)/gcc/Makefile:
+	$(ECHO) "$(BRIGHT_COL)configuring gcc...$(DEFAULT_COL)"
+	$(VERBOSE)mkdir -p $(dir $@)
+	$(VERBOSE)cd $(dir $@); \
+		host_configargs="$(HOST_CONFIG_ARGS)" \
+		target_configargs="$(TARGET_CONFIG_ARGS)" \
+		$(shell pwd)/$(CONTRIB_DIR)/gcc-$(GCC_VERSION)/configure $(GCC_CONFIG)
+
+$(GCC_BINARIES): build/$(PLATFORM)/gcc/Makefile \
+                 $(LIBC)
+
+$(GCC_BINARIES): build/$(PLATFORM)/gcc/Makefile
+	$(ECHO) "$(BRIGHT_COL)builing gcc...$(DEFAULT_COL)"
+	$(VERBOSE)$(MAKE) -C $(dir $<) $(MAKE_OPT)
+
+$(GCC_INSTALLED_BINARIES): $(GCC_BINARIES)
+	$(ECHO) "$(BRIGHT_COL)installing gcc...$(DEFAULT_COL)"
+	$(VERBOSE)$(MAKE) -C build/$(PLATFORM)/gcc $(GCC_INSTALL_RULE)
+
+$(DOWNLOAD_DIR)/gdb-$(GDB_VERSION).tar.bz2: $(DOWNLOAD_DIR)
+	$(ECHO) "$(BRIGHT_COL)downloading gdb...$(DEFAULT_COL)"
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(GDB_DOWNLOAD_URL)/gdb-$(GDB_VERSION).tar.bz2 && touch $@
+	$(VERBOSE)wget -c -P $(DOWNLOAD_DIR) $(GDB_DOWNLOAD_URL)/gdb-$(GDB_VERSION).tar.bz2.sig && touch $@
+	$(VERBOSE)$(SIGVERIFIER) $(DOWNLOAD_DIR)/gdb-$(GDB_VERSION).tar.bz2 $(DOWNLOAD_DIR)/gdb-$(GDB_VERSION).tar.bz2.sig GNU
+
+$(CONTRIB_DIR)/gdb-$(GDB_VERSION): $(DOWNLOAD_DIR)/gdb-$(GDB_VERSION).tar.bz2
+	$(ECHO) "$(BRIGHT_COL)unpacking gdb...$(DEFAULT_COL)"
+	$(VERBOSE)mkdir -p $(CONTRIB_DIR)
+	$(VERBOSE)tar xfj $^ -C $(CONTRIB_DIR) && touch $@
+
+include $(GENODE_DIR)/tool/tool_chain_gdb_patches.inc
+
+build/$(PLATFORM)/gdb/Makefile: $(CONTRIB_DIR)/gdb-$(GDB_VERSION)/configure
+	$(ECHO) "$(BRIGHT_COL)configuring gdb...$(DEFAULT_COL)"
+	$(VERBOSE)mkdir -p $(dir $@)
+	$(VERBOSE)cd $(dir $@); \
+		$(shell pwd)/$(CONTRIB_DIR)/gdb-$(GDB_VERSION)/configure $(GDB_CONFIG)
+
+$(GDB_BINARIES): build/$(PLATFORM)/gdb/Makefile
+	$(ECHO) "$(BRIGHT_COL)builing gdb...$(DEFAULT_COL)"
+	$(VERBOSE)$(MAKE) -C $(dir $<) $(MAKE_OPT)
+
+$(GDB_INSTALLED_BINARIES): $(GDB_BINARIES)
+	$(ECHO) "$(BRIGHT_COL)installing gdb...$(DEFAULT_COL)"
+	$(VERBOSE)$(MAKE) -C build/$(PLATFORM)/gdb install MAKEINFO=true
+
+#
+# Clean rules
+#
+
+clean:
+	rm -rf $(addprefix $(CONTRIB_DIR)/,binutils-$(BINUTILS_VERSION) gcc-$(GCC_VERSION))
+	rm -rf build
+
+cleanall: clean
+	rm -rf $(DOWNLOAD_DIR)/$(BINUTILS_DOWNLOAD_TBZ2)
+	rm -rf $(DOWNLOAD_DIR)/gcc-$(GCC_VERSION).tar.bz2
+
+#
+# Install rules
+#
+
+install: build_all
+	$(ECHO) "$(BRIGHT_COL)installing tool chain to '$(INSTALL_LOCATION)'...$(DEFAULT_COL)"
+	$(VERBOSE)sudo cp -a --remove-destination --no-target-directory $(LOCAL_INSTALL_LOCATION) $(INSTALL_LOCATION)
+

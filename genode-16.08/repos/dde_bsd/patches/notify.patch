@@ -1,0 +1,22 @@
+diff --git a/dev/audio.c b/dev/audio.c
+index 1271bc7..6535d10 100644
+--- a/dev/audio.c
++++ b/dev/audio.c
+@@ -411,6 +411,8 @@ audio_pintr(void *addr)
+ 		}
+ 		selwakeup(&sc->play.sel);
+ 	}
++
++	notify_play();
+ }
+ 
+ /*
+@@ -486,6 +488,8 @@ audio_rintr(void *addr)
+ 		}
+ 		selwakeup(&sc->rec.sel);
+ 	}
++
++	notify_record();
+ }
+ 
+ int

@@ -1,0 +1,16 @@
+diff --git a/src/arch/i386/include/ipxe/rdtsc_timer.h b/src/arch/i386/include/ipxe/rdtsc_timer.h
+index 472e140..d5095a7 100644
+--- a/src/arch/i386/include/ipxe/rdtsc_timer.h
++++ b/src/arch/i386/include/ipxe/rdtsc_timer.h
+@@ -30,7 +30,10 @@ static inline __always_inline unsigned long
+ TIMER_INLINE ( rdtsc, currticks ) ( void ) {
+ 	unsigned long ticks;
+ 
+-	__asm__ __volatile__ ( "rdtsc\n\t"
++	__asm__ __volatile__ (
++			       "mfence\n\t"
++			       "rdtsc\n\t"
++			       "mfence\n\t"
+ 			       "shrdl %1, %%edx, %%eax\n\t"
+ 			       : "=a" ( ticks ) : "i" ( TSC_SHIFT ) : "edx" );
+ 	return ticks;
