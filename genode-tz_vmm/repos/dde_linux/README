@@ -1,0 +1,212 @@
+Device drivers ported from the Linux kernel
+
+USB
+###
+
+Controller configuration
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The driver can be started using different or all USB controller types a platform
+offers (USB 1.0/2.0/3.0). Note that not all controllers are supported by all
+platforms.  Controllers can be enabled as attribute in the config node of the
+driver.  Supported attributes are: 'uhci', 'ehci', and 'xhci'.
+
+
+Configuration snippet to enable UHCI and EHCI
+
+! <config uhci="yes" ehci="yes">
+
+HID
+~~~
+
+Supports keyboard and mouse. A run script can be found under 'run/usb_hid.run'.
+
+Configuration snippet:
+
+!<start name="usb_drv">
+!  <resource name="RAM" quantum="3M"/>
+!  <provides><service name="Input"/></provides>
+!  <config uhci="yes" ehci="yes" xhci="yes">
+!    <hid/>
+!  </config>
+!</start>
+
+Note: It has been observed that certain 1.0 versions of Qemu do not generate
+mouse interrupts. The mouse driver should work correctly on Qemu 1.0.93 and
+above.
+
+HID - Touchscreen support
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Touchscreen absolute coordinates must be calibrated (e.g. re-calculated) to
+screen absolute coordinates. The screen resolution is not determined
+automatically by the USB driver, but can be configured as sub node of the
+hid xml tag:
+
+!...
+!<hid>
+!  <touchscreen width="1024" height="768" multitouch="no"/>
+!<hid/>
+!...
+
+If a touchscreen is multi-touch-capable than the multitouch attribute gears
+which type of Genode input events are generated. If set to  'no' (default)
+than absolute events are generated and no multitouch events. If set to 'yes'
+solely multitouch events are generated.
+
+Storage
+~~~~~~~
+
+Currently supports one USB storage device. Hot plugging has not been tested. A
+run script can be found under 'run/usb_storage.run'.
+
+Configuration snippet:
+
+!<start name="usb_drv">
+!  <resource name="RAM" quantum="2M"/>
+!  <provides> <service name="Block"/> </provides>
+!  <config><storage /></config>
+!</start uhci="yes">
+
+
+Network (Nic)
+~~~~~~~~~~~~~
+
+Configuration snippet:
+
+!<start name="usb_drv">
+!  <resource name="RAM" quantum="3M"/>
+!  <provides>
+!    <service name="Nic"/>
+!    <service name="Input"/>
+!  </provides>
+!  <config ehci="yes" xhci="yes">
+!    <nic mac="2e:60:90:0c:4e:01" />
+!    <hid/>
+!  </config>
+!</start>
+
+Please observe that this setup starts the HID and Nic service at the same time.
+Also there is the 'mac' attribute where one can specify the hardware address of
+the network interface. This is necessary in case the EEPROM of the network card
+cannot be accessed via the host controller making it impossible to retrieve the
+devices hardware address. If this is the case and no 'mac' attribute is given a
+fallback address will be assigned to the network device. Note that the fallback
+address will always be the same.
+
+LXIP
+####
+
+LXIP is a port of the Linux TCP/IP stack to Genode. It is build as a shared
+library named 'lxip.lib.so'. The IP stack can be interfaced using Genode's
+version of 'libc' by linking your application to 'lxip_libc' plugin in your
+'target.mk' file.
+
+WIFI
+####
+
+The wifi_drv component is a port of the Linux mac802.11 stack, including the
+iwlwifi driver as well as libnl and wpa_supplicant, to Genode.
+
+Configuration snippet:
+
+!<start name="wifi_drv">
+!  <resource name="RAM" quantum="32M"/>
+!  <provides><service name="Nic"/></provides>
+!  <config>
+!    <libc stdout="/dev/log" stderr="/dev/log" rtc="/dev/rtc">
+!      <vfs>
+!        <dir name="dev"> <log/> <rtc/>
+!           <jitterentropy name="random"/>
+!           <jitterentropy name="urandom"/>
+!        </dir>
+!        <inline name="wpa_supplicant.conf">
+!network={
+!  id_str="foobar"
+!  ssid="foobar"
+!  key_mgmt=WPA-PSK
+!  psk="foobarfoobar"
+!}
+!        </inline>
+!      </vfs>
+!    </libc>
+!  </config>
+!  <route>
+!    <service name="Rtc"> <any-child /> </service>
+!    <any-service> <parent/> <any-child /> </any-service>
+!  </route>
+!</start
+
+The wifi_drv creates two distinct reports to communicate its state and
+information about the wireless infrastructure to other components. The
+first one is a list of all available accesspoints. The following examplary
+report shows its structure:
+
+!<wlan_accesspoints>
+!  <accesspoint ssid="skynet" bssid="00:01:02:03:04:05" quality="40"/>
+!  <accesspoint ssid="foobar" bssid="01:02:03:04:05:06" quality="70" protection="WPA-PSK"/>
+!  <accesspoint ssid="foobar" bssid="01:02:03:04:05:07" quality="10" protection="WPA-PSK"/>
+!</wlan_accesspoints>
+
+Each accesspoint node has attributes that contain the SSID and the BSSID
+of the accesspoint as well as the link quality (signal strength). These
+attributes are mandatory. If the network is protected, the node will also
+have an attribute describing the type of protection in addition.
+
+The second report provides information about the state of the connection
+to the currently connected accesspoint:
+
+!<wlan_state>
+!  <accesspoint ssid="foobar" bssid="01:02:03:04:05:06" quality="70" protection="WPA-PSK" state="connected"/>
+!</wlan_state>
+
+Valid state values are 'connected', 'disconnected', 'connecting' and
+'disconnecting'.
+
+In return, the wifi_drv get its configuration via a ROM module. This ROM
+module contains the selected accesspoint. To connect to a accesspoint
+a report like the following is used:
+
+!<selected_accesspoint ssid="foobar" bssid="01:02:03:04:05:06" protection="WPA-PSK" psk="foobar123!"/>
+
+To disconnect from an accesspoint, a empty report is sent:
+
+!<selected_accesspoint/>
+
+By subscribing to both reports and providing the required ROM module, a
+component can control the wireless driver. An example therefore is the Qt
+based component in 'src/app/qt_wifi_connect'.
+
+Currently only WPA/WPA2 protection using a pre-shared key is supported.
+
+RAW
+~~~
+
+Allows raw access to USB devices via the 'Usb' session interface.
+
+Configuration snippet:
+
+!<start name="usb_drv">
+!  <resource name="RAM" quantum="8M"/>
+!  <provides><service name="Usb"/></provides>
+!  <config uhci="yes" ehci="yes" xhci="yes">
+!    <raw>
+!        <report devices="yes"/>
+!    </raw>
+!  </config>
+!</start>
+
+The optional 'devices' report lists the connected devices and gets updated when devices are added or removed.
+
+Example report:
+
+<devices>
+    <device vendor_id="0x17ef" product_id="0x4816"/>
+    <device vendor_id="0x0a5c" product_id="0x217f"/>
+    <device vendor_id="0x8087" product_id="0x0020"/>
+    <device vendor_id="0x8087" product_id="0x0020"/>
+    <device vendor_id="0x1d6b" product_id="0x0002"/>
+    <device vendor_id="0x1d6b" product_id="0x0002"/>
+</devices>
+
+There is no distinction yet for multiple devices of the same type.

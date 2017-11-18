@@ -1,0 +1,8 @@
+LICENSE := other
+VERSION := 0.12
+DOWNLOADS := libvmi.archive
+
+URL(libvmi) := https://github.com/libvmi/libvmi/archive/master.zip
+SHA(libvmi) := 0860c4f47db159c4e44ec27152870ba7f9fa9b42
+DIR(libvmi) := src/lib/libvmi
+

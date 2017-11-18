@@ -1,0 +1,58 @@
+build "core init test/bomb drivers/timer"
+
+set timeout 240
+set rounds 20
+
+
+if {[have_include "power_on/qemu"]} {
+	append qemu_args "-nographic -m 128"
+} else {
+	# foc is really slow on native hardware executing this test - limit rounds
+	if {[have_spec foc_x86_32]} { set rounds 6 }
+	if {[have_spec foc_x86_64]} { set rounds 6 }
+}
+
+set config {
+<config prio_levels="2">
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="RAM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="CAP"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		<service name="SIGNAL"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="timer">
+		<resource name="CPU" quantum="10"/>
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+	</start>
+	<start name="bomb-master" priority="-1">
+		<binary name="bomb"/>
+		<resource name="CPU" quantum="90"/>
+		<resource name="RAM" quantum="2G"/>}
+
+append config "
+		<config rounds=\"$rounds\" generations=\"6\" sleep=\"1500\"/>"
+
+append config {
+	</start>
+</config>}
+
+create_boot_directory
+
+install_config $config
+
+build_boot_image "core init bomb timer"
+
+run_genode_until "Done\. Going to sleep\." $timeout
+
+puts "Test succeeded."

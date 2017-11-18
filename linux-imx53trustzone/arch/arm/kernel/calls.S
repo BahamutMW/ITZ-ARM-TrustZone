@@ -375,7 +375,8 @@
 		CALL(sys_rt_tgsigqueueinfo)
 		CALL(sys_perf_event_open)
 /* 365 */	CALL(sys_recvmmsg)
-/* 366*/  	CALL(sys_my_smc) 
+/* 366*/  	CALL(sys_my_smc)
+/* 367*/	//CALL(sys_my_init_module)
 
 #ifndef syscalls_counted
 .equ syscalls_padding, ((NR_syscalls + 3) & ~3) - NR_syscalls

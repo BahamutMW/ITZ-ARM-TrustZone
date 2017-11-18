@@ -1,0 +1,8 @@
+LICENSE := other
+VERSION := 2.53.1
+DOWNLOADS := glib.archive
+
+URL(glib) := https://ftp.gnome.org/pub/gnome/sources/glib/2.53/glib-2.53.1.tar.xz
+SHA(glib) := 12b4f7460481776c9be281d165d92270b3316a71
+DIR(glib) := src/lib/glib
+

@@ -1,0 +1,146 @@
+#
+# \brief  Test for using the libc_vfs plugin with the FFAT file system
+# \author Christian Prochaska
+# \date   2012-07-03
+#
+
+set use_sd_card_drv [expr [have_spec omap4] || [have_spec arndale] || [have_spec pl180]]
+set use_ahci_drv   [have_spec x86]
+set mkfs [check_installed mkfs.vfat]
+
+if {[expr [have_spec linux] || [have_spec hw_odroid_xu]]} {
+        puts "Run script does not support this platform"; exit }
+
+#
+# Build
+#
+
+set build_components {
+	core init
+	drivers/timer
+	server/ffat_fs
+	test/libc_vfs
+}
+
+lappend_if $use_ahci_drv    build_components drivers/ahci
+lappend_if $use_sd_card_drv build_components drivers/sd_card
+
+source ${genode_dir}/repos/base/run/platform_drv.inc
+append_platform_drv_build_components
+
+build $build_components
+create_boot_directory
+
+#
+# Generate config
+#
+
+set config {
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="RAM"/>
+		<service name="CAP"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		<service name="SIGNAL"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides> <service name="Timer"/> </provides>
+	</start>
+	<start name="ffat_fs">
+		<resource name="RAM" quantum="4M"/>
+		<provides> <service name="File_system"/> </provides>
+		<config> <policy label="" root="/" writeable="yes" /> </config>
+	</start>
+	<start name="test-libc_vfs">
+		<resource name="RAM" quantum="2M"/>
+		<config>
+			<libc stdout="/dev/log">
+				<vfs>
+					<dir name="dev"> <log/> </dir>
+					<fs/>
+				</vfs>
+			</libc>
+		</config>
+	</start>}
+
+append_platform_drv_config
+
+append_if $use_ahci_drv config {
+	<start name="ahci_drv">
+		<resource name="RAM" quantum="1M"/>
+		<provides> <service name="Block"/> </provides>
+		<config>
+			<policy label="ffat_fs" device="0" />
+		</config>
+	</start>
+}
+
+append_if $use_sd_card_drv config {
+	<start name="sd_card_drv">
+		<resource name="RAM" quantum="1M" />
+		<provides><service name="Block"/></provides>
+	</start>
+}
+
+append config {
+</config>
+}
+
+install_config $config
+
+#
+# Boot modules
+#
+
+# generic modules
+set boot_modules {
+	core init timer ffat_fs
+	ld.lib.so libc.lib.so
+	test-libc_vfs
+}
+
+lappend_if $use_ahci_drv     boot_modules ahci_drv
+lappend_if $use_sd_card_drv  boot_modules sd_card_drv
+
+append_platform_drv_boot_modules
+
+build_boot_image $boot_modules
+
+#
+# Execute test case
+#
+
+set disk_image "bin/test.hda"
+set cmd "dd if=/dev/zero of=$disk_image bs=1024 count=65536"
+puts "creating disk image: $cmd"
+catch { exec sh -c $cmd }
+
+set cmd "$mkfs -F32 $disk_image"
+puts "formating disk image with vfat file system: $cmd"
+catch { exec sh -c $cmd }
+
+#
+# Qemu
+#
+append qemu_args " -m 128 -nographic "
+append_if $use_ahci_drv    qemu_args " -drive id=disk,file=$disk_image,if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 -boot d"
+append_if $use_sd_card_drv qemu_args " -drive file=$disk_image,if=sd,cache=writeback "
+
+run_genode_until {.*child "test-libc_vfs" exited with exit value 0.*} 60
+
+exec rm -f $disk_image
+
+puts "\nTest succeeded\n"
+
+# vi: set ft=tcl :

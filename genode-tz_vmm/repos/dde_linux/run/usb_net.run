@@ -1,0 +1,107 @@
+#
+# \brief  Test for using the lwIP TCP/IP stack over USB
+# \author Sebastian Sumpf
+# \date   2012-07-06
+#
+# This test case executes a small HTTP server, it has been used on PandaBoard
+# hardware only, though it should execute but not do anything on other hardware
+#
+
+#
+# Build
+#
+
+set build_components {
+	core init
+	drivers/timer drivers/usb
+	test/lwip/http_srv
+}
+
+source ${genode_dir}/repos/base/run/platform_drv.inc
+append_platform_drv_build_components
+
+lappend_if [have_spec gpio]             build_components drivers/gpio
+
+build $build_components
+
+create_boot_directory
+
+#
+# Generate config
+#
+
+set config {
+<config verbose="yes">
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="RAM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="CAP"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		<service name="SIGNAL"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides> <service name="Timer"/> </provides>
+	</start>
+	<start name="usb_drv">
+		<resource name="RAM" quantum="12M"/>
+		<provides>
+			<service name="Nic"/>
+		</provides>
+		<config uhci="no" ehci="yes" xhci="yes">
+			<nic mac="02:00:00:00:01:01" />
+		</config>
+	</start>
+	<start name="test-lwip_httpsrv">
+		<resource name="RAM" quantum="2M"/>
+		<config>
+			<libc stdout="/dev/log">
+				<vfs> <dir name="dev"> <log/> </dir> </vfs>
+			</libc>
+		</config>
+	</start>}
+
+append_platform_drv_config
+
+append_if [have_spec gpio] config {
+	<start name="gpio_drv">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="Gpio"/></provides>
+		<config/>
+	</start>}
+
+append config {
+</config>
+}
+
+install_config $config
+
+#
+# Boot modules
+#
+
+# generic modules
+set boot_modules {
+	core init timer
+	usb_drv
+	ld.lib.so libc.lib.so lwip.lib.so test-lwip_httpsrv
+}
+
+append_platform_drv_boot_modules
+lappend_if [have_spec gpio]             boot_modules gpio_drv
+
+build_boot_image $boot_modules
+
+append qemu_args " -m 256 -nographic"
+
+run_genode_until forever
+# vi: set ft=tcl :

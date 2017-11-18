@@ -375,6 +375,7 @@ config MXS_PERFMON
 	depends on ARCH_MX28 || ARCH_MX50
 	default y
 
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

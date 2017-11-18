@@ -1,0 +1,89 @@
+source ${genode_dir}/repos/libports/run/qt5_common.inc
+
+#
+# Build
+#
+
+append build_components [qt5_build_components feature]
+
+append build_components {
+	app/qt5/examples/calculatorform
+}
+
+build $build_components
+
+create_boot_directory
+
+
+#
+# Create Qt tar archive
+#
+
+create_qt5_fs_tar_archive "calculatorform" "gui"
+
+#
+# Generate config
+#
+
+append config {
+<config>
+	<parent-provides>}
+append config [qt5_parent_provides feature]
+append config {
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <child name="wm"/> <any-child/> </any-service>
+	</default-route>}
+
+append config [qt5_start_nodes feature]
+
+append config {
+	<start name="calculatorform">
+		<resource name="RAM" quantum="80M"/>
+		<config>
+			<libc stdout="/dev/log" stderr="/dev/log">
+				<vfs>
+					<dir name="dev"> <log/> </dir>
+					<tar name="qt5_fs_calculatorform.tar"/>
+				</vfs>
+			</libc>
+		</config>
+	</start>
+</config>
+}
+
+install_config $config
+
+#
+# Boot modules
+#
+
+append boot_modules [qt5_boot_modules feature]
+
+append boot_modules {
+	calculatorform
+	freetype.lib.so
+	gallium.lib.so
+	icu.lib.so
+	ld.lib.so
+	libc.lib.so
+	libc_lock_pipe.lib.so
+	libm.lib.so
+	libpng.lib.so
+	jpeg.lib.so
+	pthread.lib.so
+	qt5_core.lib.so
+	qt5_gui.lib.so
+	qt5_widgets.lib.so
+	qt5_xml.lib.so
+	zlib.lib.so
+	stdcxx.lib.so
+	qt5_fs_calculatorform.tar
+}
+
+build_boot_image $boot_modules
+
+append qemu_args " -m 256"
+
+run_genode_until forever
+

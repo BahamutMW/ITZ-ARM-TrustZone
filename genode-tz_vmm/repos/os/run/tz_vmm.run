@@ -1,0 +1,184 @@
+#
+# \brief  Virtual-machine monitor demo
+# \author Stefan Kalkowski
+# \author Martin Stein
+# \date   2012-06-25
+#
+
+assert_spec hw
+assert_spec imx53
+assert_spec trustzone
+
+# determine platform specific configuration
+set trusted_led       [have_spec hw_usb_armory]
+set inversepath_linux [have_spec hw_usb_armory]
+set freescale_linux   [have_spec hw_imx53_qsb_tz]
+set initrd_rootfs     $freescale_linux
+set mmc_rootfs        $inversepath_linux
+set dtb               $inversepath_linux
+
+set mke2fs [check_installed mke2fs]
+set dd     [check_installed dd]
+
+set targets { core init server/rump_fs drivers/timer drivers/sd_card server/part_blk server/tz_vmm}
+
+
+build $targets
+
+catch { exec $dd if=/dev/zero of=bin/ext2.raw bs=1M count=16 }
+catch { exec $mke2fs -F bin/ext2.raw }
+
+create_boot_directory
+
+# compose config
+set config {
+<config verbose="yes">
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="RAM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="CAP"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		<service name="SIGNAL"/>
+		<service name="VM"/>
+	</parent-provides>
+	<default-route>
+		<any-service><any-child/><parent/></any-service>
+	</default-route> 
+	<start name="timer">
+		<resource name="RAM" quantum="3M"/>
+		<provides><service name="Timer"/></provides>
+	</start>
+	<start name="sd_card_drv">
+		<resource name="RAM" quantum="20M"/>
+		<provides><service name="Block"/></provides>
+		<config file="ext2.raw" block_size="512"/>
+	</start>
+	<start name="part_blk">
+  		<resource name="RAM" quantum="10M" />
+  		<provides><service name="Block" /></provides>
+ 		<!-- route part_blk to the ata_driver -->
+ 		<route>
+  			<service name="Block"><child name="sd_card_drv" /></service>
+			<any-service><parent/><any-child/></any-service>
+ 		</route>
+
+ 		<config>
+   			<policy label="tz_vmm" partition="2"/>
+			<policy label="rump_fs" partition="2"/>
+    				
+		</config>
+	</start>
+
+    	<start name="rump_fs">
+		<resource name="RAM" quantum="8M" />
+		<provides><service name="File_system"/></provides>
+		<route>
+    			<any-service> <child name="part_blk" /> <any-child/> <parent/> </any-service>
+  		</route>
+		<config fs="ext2fs"><policy label="" root="/" writeable="yes"/></config>
+	</start> 
+
+	<start name="tz_vmm">
+		<resource name="RAM" quantum="10M"/> 
+		<route>
+    			<any-service> <child name="part_blk" /> <parent/> <any-child/> </any-service>
+			
+  		</route>
+		<config>
+			
+			<libc stdout="/dev/log" stderr="/dev/log">  
+				<vfs>
+					<dir name="dev"> 
+						<log/>
+                                      		<jitterentropy name="random"/>
+     					</dir>
+					<fs/>
+				</vfs>
+			</libc>
+		</config>
+	</start>
+</config> }
+
+install_config $config
+
+# download and add linux
+if { $inversepath_linux } {
+
+	#
+	# If this path is reached, Linux and the corresponding DTB were build with
+	# this toolchain:
+	#
+	# ! https://releases.linaro.org/15.02/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2015.02-3-x86_64_arm-linux-gnueabihf.tar.xz
+	#
+	# From this sources:
+	#
+	# ! https://github.com/m-stein/linux/tree/1497_usb_armory_demo
+	#
+	# With the following commands:
+	#
+	# ! make ARCH=arm CROSS_COMPILE=$GCC/bin/arm-none-eabi- usbarmory_defconfig
+	# ! make ARCH=arm CROSS_COMPILE=$GCC/bin/arm-none-eabi- LOADADDR=0x80008000 uImage
+	# ! make ARCH=arm CROSS_COMPILE=$GCC/bin/arm-none-eabi- imx53-usbarmory.dtb
+	#
+	# Then 'arch/arm/boot/compressed/vmlinux' can be used as 'linux' and
+	# 'arch/arm/boot/dts/imx53-usbarmory.dtb' can be used as 'dtb'.
+	#
+	set linux_uri "https://github.com/m-stein/genode_binaries/raw/master/tz_vmm/imx53/linux"
+
+}  elseif { $freescale_linux } {
+
+	set linux_uri "http://genode.org/files/images/imx53_qsb/linux_trustzone.bin"
+}
+if {![file exists bin/linux]} {
+	puts "Download linux binary ..."
+	exec >& /dev/null wget -c -O bin/linux $linux_uri
+}
+# exec >& /dev/null wget -O bin/linux.md5 $linux_uri.md5
+# cd bin
+# exec md5sum -c linux.md5
+# cd ..
+
+set boot_modules { core init tz_vmm timer sd_card_drv part_blk glib.lib.so ld.lib.so ext2.raw vfs_jitterentropy.lib.so libcrypto.lib.so libc.lib.so rump.lib.so rump_fs.lib.so rump_fs initrd.gz linux }
+
+if { $dtb } {
+
+	# download and add DTB
+	set dtb_uri "https://github.com/m-stein/genode_binaries/raw/master/tz_vmm/imx53/dtb"
+	if {![file exists bin/dtb]} {
+		puts "Download device tree ..."
+		exec >& /dev/null wget -c -O bin/dtb $dtb_uri
+	}
+	exec >& /dev/null wget -O bin/dtb.md5 $dtb_uri.md5
+	cd bin
+	exec md5sum -c dtb.md5
+	cd ..
+	lappend boot_modules dtb
+}
+
+build_boot_image [join $boot_modules " "]
+
+if { $inversepath_linux } {
+
+	# execute and wait for console
+	run_genode_until "Debian GNU/Linux 7 usbarmory console\n" 220
+
+} elseif { $freescale_linux } {
+
+	# execute and wait for console
+	run_genode_until {.*\/ #.*} 220
+	set serial_id [output_spawn_id]
+
+	# wait for network to settle down
+	send -i $serial_id "sleep 5\n"
+
+	# test network
+	send -i $serial_id "wget http://genode.org/\n"
+	run_genode_until "Connecting to genode.org" 10 $serial_id
+	run_genode_until {.*\/ #.*} 30 $serial_id
+}

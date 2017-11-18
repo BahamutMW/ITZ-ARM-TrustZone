@@ -1,0 +1,8 @@
+LICENSE := other
+VERSION := 0.12
+DOWNLOADS := flex.archive
+
+URL(flex) := https://github.com/westes/flex/archive/master.zip
+SHA(flex) := 07872d8841e78e3889e7fc5fbc763710407dc198
+DIR(flex) := src/lib/flex
+

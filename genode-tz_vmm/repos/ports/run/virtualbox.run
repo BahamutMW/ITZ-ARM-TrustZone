@@ -1,0 +1,162 @@
+set use_net 0
+set use_ps2 [have_spec ps2]
+set use_usb 0
+set use_serial 0
+
+set build_components {
+	core init virtualbox
+	drivers/framebuffer
+	drivers/timer
+}
+
+source ${genode_dir}/repos/base/run/platform_drv.inc
+# override defaults of platform_drv.inc
+proc platform_drv_priority {} { return { priority="-1"} }
+
+lappend_if [expr $use_ps2]    build_components drivers/input
+lappend_if [expr $use_usb]    build_components drivers/usb
+lappend_if [expr $use_serial] build_components server/log_terminal
+lappend_if [have_spec x86]    build_components drivers/rtc
+
+lappend_if [expr $use_net]    build_components drivers/nic
+
+append_platform_drv_build_components
+
+build $build_components
+
+create_boot_directory
+
+set config {
+<config prio_levels="4">
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="RAM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="CAP"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		<service name="SIGNAL"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+	</start>}
+
+append_platform_drv_config
+
+append_if [expr $use_ps2] config {
+	<start name="ps2_drv" priority="-1">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Input"/></provides>
+	</start>}
+
+append_if [expr $use_usb] config {
+	<start name="usb_drv" priority="-1">
+		<resource name="RAM" quantum="7M"/>
+		<provides><service name="Input"/></provides>
+		<config uhci="yes" ehci="yes" xhci="yes">
+			<hid/>
+		</config>
+	</start>}
+
+append_if [have_spec framebuffer] config {
+	<start name="fb_drv" priority="-1">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="Framebuffer"/></provides>
+	</start>}
+
+append_if [have_spec sdl] config {
+	<start name="fb_sdl" priority="-1">
+		<resource name="RAM" quantum="4M"/>
+		<provides>
+			<service name="Input"/>
+			<service name="Framebuffer"/>
+		</provides>
+	</start>}
+
+append_if [have_spec x86] config {
+	<start name="rtc_drv" priority="-1">
+		<resource name="RAM" quantum="1M"/>
+		<provides>
+			<service name="Rtc"/>
+		</provides>
+	</start>}
+
+append_if [expr $use_net] config {
+	<start name="nic_drv" priority="-1">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="Nic"/></provides>
+	</start>
+}
+
+append_if [expr $use_serial] config {
+	<start name="log_terminal">
+		<resource name="RAM" quantum="2M"/>
+		<provides>
+			<service name="Terminal"/>
+		</provides>
+	</start>
+}
+
+append config {
+	<start name="virtualbox" priority="-2">
+		<resource name="RAM" quantum="448M"/>
+		<config vbox_file="test.vbox" vm_name="TestVM">
+			<libc stdout="/dev/log" stderr="/dev/log" rtc="/dev/rtc">
+				<vfs>
+					<dir name="dev"> <log/> <rtc/> </dir>}
+
+append_if [expr $use_serial] config {
+					<dir name="dev"> <terminal/> </dir>}
+
+append config {
+					<rom name="test.vbox" />
+					<rom name="test.iso" />
+				</vfs>
+			</libc>
+		</config>
+	</start>
+</config>
+}
+
+install_config $config
+
+exec cp ${genode_dir}/repos/ports/run/test.vbox bin/.
+
+set boot_modules { core init timer virtualbox test.iso test.vbox }
+
+# platform-specific modules
+lappend_if [expr         $use_usb] boot_modules usb_drv
+lappend_if [expr         $use_ps2] boot_modules ps2_drv
+lappend_if [have_spec framebuffer] boot_modules fb_drv
+lappend_if [have_spec       linux] boot_modules fb_sdl
+lappend_if [have_spec         x86] boot_modules rtc_drv
+
+append boot_modules {
+	ld.lib.so libc.lib.so libm.lib.so pthread.lib.so libc_lock_pipe.lib.so
+	libc_terminal.lib.so libiconv.lib.so stdcxx.lib.so
+}
+
+append_if [expr $use_net]          boot_modules { nic_drv }
+append_if [expr $use_serial]       boot_modules { log_terminal }
+
+append_platform_drv_boot_modules
+
+build_boot_image $boot_modules
+
+if {[have_include "power_on/qemu"]} {
+	append qemu_args " -m 512 "
+	append qemu_args " -cpu phenom "
+	if {[expr $use_usb]} {
+		append qemu_args " -usbdevice mouse -usbdevice keyboard"
+	}
+}
+
+run_genode_until forever

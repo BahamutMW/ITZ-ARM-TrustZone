@@ -1,0 +1,138 @@
+build {
+	core init
+	drivers/timer
+	server/nitpicker server/nit_fb
+	app/launchpad app/pointer
+	app/eglgears
+	drivers/framebuffer drivers/input
+	lib/gallium
+}
+
+create_boot_directory
+
+set config {
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="RAM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="CAP"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		<service name="SIGNAL"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+}
+
+append_if [have_spec sdl] config {
+	<start name="fb_sdl">
+		<resource name="RAM" quantum="4M"/>
+		<provides>
+			<service name="Input"/>
+			<service name="Framebuffer"/>
+		</provides>
+	</start>}
+
+append_platform_drv_config
+
+append_if [have_spec framebuffer] config {
+	<start name="fb_drv">
+		<resource name="RAM" quantum="4M"/>
+		<provides><service name="Framebuffer"/></provides>
+	</start>}
+
+append_if [have_spec ps2] config {
+	<start name="ps2_drv">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Input"/></provides>
+	</start> }
+
+append config {
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+	</start>
+	<start name="nitpicker">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Nitpicker"/></provides>
+		<config>
+			<domain name="pointer" layer="1" xray="no" origin="pointer" />
+			<domain name=""        layer="2" />
+			<policy label="pointer" domain="pointer"/>
+			<policy label=""        domain=""/>
+		</config>
+		<route><any-service><parent/><any-child/></any-service></route>
+	</start>
+	<start name="pointer">
+		<resource name="RAM" quantum="1M"/>
+	</start>
+	<start name="launchpad">
+		<resource name="RAM" quantum="1G"/>
+		<config>
+			<launcher name="init" ram_quota="100M">
+				<config>
+					<parent-provides>
+						<service name="ROM"/>
+						<service name="RAM"/>
+						<service name="IRQ"/>
+						<service name="IO_MEM"/>
+						<service name="IO_PORT"/>
+						<service name="CAP"/>
+						<service name="PD"/>
+						<service name="RM"/>
+						<service name="CPU"/>
+						<service name="LOG"/>
+						<service name="Platform"/>
+						<service name="SIGNAL"/>
+						<service name="Nitpicker"/>
+						<service name="Timer"/>
+					</parent-provides>
+					<start name="nit_fb">
+						<resource name="RAM" quantum="2M"/>
+						<provides><service name="Input"/><service name="Framebuffer"/></provides>
+						<route><any-service><parent/></any-service></route>
+						<config xpos="300" ypos="100" width="576" height="408" />
+					</start>
+					<start name="eglgears">
+						<resource name="RAM" quantum="1G"/>
+						<route><any-service> <parent /> <any-child/> </any-service></route>
+						<config>
+							<libc stdout="/dev/log">
+								<vfs> <dir name="dev"> <log/> </dir> </vfs>
+							</libc>
+						</config>
+					</start>
+				</config>
+			</launcher>
+		</config>
+	</start>
+</config>
+}
+
+install_config $config
+
+set boot_modules {
+	core init ld.lib.so timer nitpicker nit_fb
+	launchpad eglgears pointer
+	gallium.lib.so libc.lib.so libm.lib.so pthread.lib.so
+}
+
+lappend_if [have_spec       linux] boot_modules fb_sdl
+lappend_if [have_spec framebuffer] boot_modules fb_drv
+lappend_if [have_spec         ps2] boot_modules ps2_drv
+lappend_if [have_spec        i915] boot_modules gallium-i915.lib.so
+
+append_platform_drv_boot_modules
+
+build_boot_image $boot_modules
+
+append qemu_args " -m 768"
+
+run_genode_until forever
+

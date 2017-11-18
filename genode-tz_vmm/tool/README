@@ -1,0 +1,75 @@
+This directory contains tools for managing and using the source code
+of Genode.
+
+:'create_builddir'
+
+  The 'create_builddir' tool provides a convenient way to create build
+  directories for different platforms. Its usage information is printed when
+  starting the tool without arguments.
+
+:'builddir/':
+
+  This directory contains a Makefile template and configuration snippets used
+  by the 'create_builddir' tool.
+
+:'tool_chain':
+
+  This tool downloads, builds, and installs the tool chain needed to build the
+  Genode OS Framework. For getting usage information, start the tool without
+  arguments.
+
+:'create_iso':
+
+  This simple tool helps to build bootable ISO images from your build of
+  Genode. For getting usage information, start the tool without arguments.
+
+:'create_grub2':
+
+  This tool prepares a partitioned disk image with GRUB2 as boot
+  loader.
+
+:'grub2-head.img':
+
+  This file is the head part of a partioned disk image including an
+  installation of GRUB2 as boot loader. GRUB2 is available from
+  http://www.gnu.org/software/grub/ and in major Linux distributions.
+  Steps to reproduce the image creation can be found in
+  'create_grub2'.
+
+:'beautify':
+
+  Beautify is a coding-style checking tool that analyzes source code for its
+  adherence to Genode's coding style as described in 'doc/coding_style.txt'.
+  Whenever possible, the tool tries to fix the issues and outputs a corrected
+  file.  Some corrections, however, require human interaction.  In this case,
+  the tool stops the analysis with an error.
+
+:'parse_cxx':
+
+  This tool is a C++ parser used as front-end for Beautify.
+
+:'cxx_to_html':
+
+  This tool converts a C++ source file to a HTML view to be used for the API
+  documentation at the genode.org website. It relies on 'parse_cxx' to do the
+  actual C++ parsing.
+
+:'fix_include_ifndef':
+
+  This tool helps with assigning consistent include guards to header files.
+
+:'boot':
+
+  This directory contains boot-loader files needed to create boot images.
+
+:'autopilot':
+
+  Autopilot is a tool for the automatic execution of run scripts among multiple
+  base platforms.
+
+:'prepare.mk':
+
+  Tool for downloading and integrating 3rd-party source codes with Genode.
+  This file is included by the makefiles in the root of source-code
+  repositories that interface with 3rd-party code, e.g., libports and ports.
+

@@ -1,0 +1,73 @@
+#
+# \brief  Cross-link terminal test
+# \author Christian Prochaska
+# \date   2012-05-16
+#
+
+#
+# Build
+#
+
+build {
+	core init drivers/timer
+	server/terminal_crosslink test/terminal_crosslink
+}
+
+create_boot_directory
+
+#
+# Generate config
+#
+
+append config {
+<config>
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="RAM"/>
+		<service name="IRQ"/>
+		<service name="IO_MEM"/>
+		<service name="IO_PORT"/>
+		<service name="CAP"/>
+		<service name="PD"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="LOG"/>
+		<service name="SIGNAL"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="timer">
+		<resource name="RAM" quantum="512K"/>
+		<provides> <service name="Timer"/> </provides>
+	</start>
+	<start name="terminal_crosslink">
+		<resource name="RAM" quantum="1M"/>
+		<provides> <service name="Terminal"/> </provides>
+	</start>
+	<start name="test-terminal_crosslink">
+		<resource name="RAM" quantum="1M"/>
+	</start>
+</config>
+}
+
+install_config $config
+
+#
+# Boot modules
+#
+
+build_boot_image {
+	core init timer terminal_crosslink
+	test-terminal_crosslink
+}
+
+append qemu_args "-nographic -m 64"
+
+#
+# Execute test case
+#
+
+run_genode_until "Test succeeded.*" 5
+
+# vi: set ft=tcl :

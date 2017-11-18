@@ -1,0 +1,8 @@
+LICENSE := other
+VERSION := 0.12
+DOWNLOADS := byacc.archive
+
+URL(byacc) := http://invisible-island.net/datafiles/release/byacc.tar.gz
+SHA(byacc) := 4e8d6dffc25fd81b5dc91782873473ca5626bf75
+DIR(byacc) := src/lib/byacc
+

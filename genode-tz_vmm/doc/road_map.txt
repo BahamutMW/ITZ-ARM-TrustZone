@@ -1,0 +1,108 @@
+
+                             ========
+                             Road Map
+                             ========
+
+
+Herein, we lay out our plans for evolving Genode. Progress in addition to this
+planning will very much depend on the degree of community support the project
+will receive. The
+[http:/about/challenges - Challenges] page collects some of our ideas to
+advance Genode in various further directions.
+
+The road map is not fixed. If there is commercial interest of pushing the
+Genode technology to a certain direction, we are willing to revisit our plans.
+
+
+Review of 2014
+##############
+
+Most of the progress in 2014 was motivated by our goal to use
+Genode as general-purpose OS on x86-based platforms. To highlight a
+few achievements, we started to use [http://rumpkernel.org/ - Rump kernels]
+as file-system providers, enabled VirtualBox on NOVA, pulled off the
+engineering feat to run the Intel Wireless stack natively on microkernels, and
+came up with a new GUI architecture. We regard these features as the
+groundwork to make Genode a feasible platform for day-to-day computing.
+
+That said, even though we are proud about the progress, we are still not there
+yet. So what keeps us back? The answer is actually not technical. Most
+developments over the past years were concerned with individual features or
+technical challenges. But the integration of sophisticated system scenarios
+was a rare occurrence. For the most part, such integration activities were
+solely triggered by a particular project or by a presentation. In order to
+make Genode fit for regular use, we need to make the composing of advanced
+systems a habit for most of the regular developers.
+
+
+Big picture for 2015
+####################
+
+On the account of this realization, the overall theme of 2015 will be the
+consolidation and cultivation of the existing feature set rather than the
+conquering of new grounds. This implies the following topics:
+
+* Advancing our automated test and integration infrastructure towards
+  the continuous integration of real-world system scenarios,
+* Fostering good-quality documentation,
+* Optimization of performance and stability,
+* Improvement of our tooling
+
+Furthermore, we have to address outstanding limitations of the most
+commonly used base platforms, namely base-hw and NOVA. I.e., only
+with kernel-protected capabilities, base-hw can be considered as a viable
+base platform for security-critical systems, and only with proper
+kernel-resource management, NOVA can be recommended as a kernel for
+general-purpose computing.
+
+Besides the cultivation of the existing feature set, there will still be room
+for new things. We are particularly excited about the prospect of combining
+Genode with the [http://sel4.systems - seL4 kernel] and
+the [http://nixos.org/nix/ - Nix package manager]. Furthermore, we desire to
+continue the work on our new GUI architecture towards a capability-based
+desktop environment.
+
+
+Milestones for 2015
+###################
+
+In the following, we present a rough schedule of the planned work. As usual,
+it is not set in stone. If you are interested in a particular line of work,
+please get in touch.
+
+
+February - Release 15.02
+========================
+
+* ARM virtualization on top of the base-hw kernel
+* Modularized tooling for automated tests
+
+
+May - Release 15.05
+===================
+
+* Comprehensive documentation of the Genode foundations
+* Kernel-protected capabilities for the base-hw kernel
+* seL4 microkernel as base platform
+* Refined platform-driver architecture (support for MSIs, assignment of
+  I/O resources to drivers, standardized configuration)
+
+
+August - Release 15.08
+======================
+
+* Capability-based desktop environment allowing the interactive installation
+  and management of Genode subsystems and the interaction with files
+* Accommodation of typical desktop-computing tasks (e.g., email)
+* Interactive tools for observing the system behavior
+* NOVA kernel-resource management
+
+
+November - Release 15.11
+========================
+
+* Achieving cross-kernel binary compatibility
+* Package management
+* Modern web browser
+
+

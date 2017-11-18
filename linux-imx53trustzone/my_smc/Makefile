@@ -1,1 +1,1 @@
-obj-y := my_smc.o
+obj-y := my_smc.o 
