@@ -832,3 +832,145 @@ void vmi_print_hex_pa(Vm * _vm, uint64_t paddr, size_t length) {
     i++;
   }
 }
+
+
+//Prints out the hex and ascii version of a chunk of bytes.
+void vmi_print_hex_ksym(Vm * _vm, char * sym, size_t length){
+
+}
+
+//Prints out the hex and ascii version of a chunk of bytes.
+void vmi_print_hex(unsigned char * data, unsigned long length){
+
+}
+
+/**
+ * Get and Set Functions
+ */
+
+//Gets the name of the VM that ITZ is accessing.
+char * vmi_get_name(Vm * _vm){
+  return 0;
+
+}
+
+//Gets the id of the VM that LibVMI is accessing.
+unsigned long vmi_get_vmid(Vm * _vm){
+  return 0;
+
+}
+
+// Gets the current access mode for LibVMI, which tells what resource is being using to access the memory (e.g., VMI_XEN, VMI_KVM, or VMI_FILE).
+uint32_t vmi_get_access_mode(Vm * _vm){
+  return 0;
+}
+
+// Gets the current page mode for LibVMI, which tells what type of address translation is in use (e.g., VMI_PM_LEGACY, VMI_PM_PAE, or VMI_PM_IA32E).
+//page_mode_t vmi_get_page_mode(Vm * _vm){
+//}
+
+// Gets the current address width for the given vmi_instance_t
+uint8_t vmi_get_address_width(Vm * _vm){
+  return 0;
+}
+
+// Get the OS type that LibVMI is currently accessing. This is simple windows or linux (no version information).
+os_t vmi_get_ostype(Vm * _vm){
+  return VMI_OS_LINUX;
+}
+
+// Get the version of Windows that LibVMI is currently accessing. This is the simple Windows version - no service pack or patch level is provided.
+win_ver_t vmi_get_winver(Vm * _vm){
+  return VMI_OS_WINDOWS_NONE;
+}
+
+// Get string represenatation of the version of Windows that LibVMI is currently accessing.
+const char * vmi_get_winver_str(Vm * _vm){
+  return 0;
+}
+
+// Get the version of Windows based on the provided KDVB address. This is the simple Windows version - no service pack or patch level is provided.
+win_ver_t vmi_get_winver_manual(Vm * _vm, uint64_t kdvb_pa){
+  return VMI_OS_WINDOWS_NONE;
+}
+
+//Get the memory offset associated with the given offset_name. Valid names include everything in the /etc/libvmi.conf file.
+uint64_t vmi_get_offset(Vm * _vm, char * offset_name){
+  return 0;
+}
+
+// Gets the memory size of the guest or file that LibVMI is currently accessing. This is effectively the max physical address that you can access in the system.
+uint64_t vmi_get_memsize(Vm * _vm){
+  return 0;
+}
+
+//    Gets the memory size of the guest that LibVMI is accessing. This information is required for any interaction with of VCPU registers.
+unsigned int vmi_get_num_vcpus(Vm * _vm){
+  return 0;
+}
+
+//    Gets the current value of a VCPU register. This currently only supports control registers. When LibVMI is accessing a raw memory file, this function will fail.
+status_t vmi_get_vcpureg(Vm * _vm, reg_t * value, registers_t reg, unsigned long vcpu){
+  return VMI_SUCCESS;
+}
+
+//    Sets the current value of a VCPU register. This currently only supports control registers. When LibVMI is accessing a raw memory file, this function will fail. Operating upon an unpaused VM with this function is likely to have unexpected results.
+status_t vmi_set_vcpureg(Vm * _vm, reg_t value, registers_t reg, unsigned long vcpu){
+  return VMI_SUCCESS;
+}
+
+//Pauses the VM. Use vmi_resume_vm to resume the VM after pausing it. If accessing a memory file, this has no effect.
+status_t vmi_pause_vm(Vm * _vm){
+  return VMI_SUCCESS;
+}
+
+//Resumes the VM.
+status_t vmi_resume_vm(Vm * _vm){
+  return VMI_SUCCESS;
+}
+
+/**
+ * Cache Functions
+ */
+
+// Removes all entries from LibVMI internal virtual to physical address cache. This is generally only useful if you believe that an entry in the cache is incorrect, or out of date.
+void vmi_v2pcache_flush(Vm * _vm){
+
+}
+
+//    Adds one entry to LibVMI's internal virtual to physical address cache.
+void vmi_v2pcache_add(Vm * _vm, uint64_t va, uint64_t dtb, uint64_t pa){
+
+}
+
+//    Removes all entries from LibVMIs internal kernel symbol to virtual address cache. This is generally only useful if you believe that an entry in the cache is incorrect, or out of date.
+void vmi_symcache_flush(Vm * _vm){
+
+}
+
+//    Adds one entry to LibVMI's internal symbol to virtual address cache.
+void vmi_symcache_add(Vm * _vm, uint64_t base_addr, vmi_pid_t pid, char * sym, uint64_t va){
+
+
+}
+
+//    Removes all entries from LibVMIs internal RVA to symbol cache. This is generally only useful if you believe that an entry in the cache is incorrect, or out of date.
+void vmi_rvacache_flush(Vm * _vm){
+
+}
+
+//    Adds one entry to LibVMI's internal RVA to symbol cache.
+void vmi_rvacache_add(Vm * _vm, uint64_t base_addr, vmi_pid_t pid, uint64_t rva, char * sym){
+
+}
+
+//    Removes all entries from LibVMIs internal pid to directory table base cache. This is generally only useful if you believe that an entry in the cache is incorrect, or out of date.
+void vmi_pidcache_flush(Vm * _vm){
+
+}
+
+//    Adds one entry to LibVMIs internal pid to directory table base cache.
+void vmi_pidcache_add(Vm * _vm, vmi_pid_t pid, uint64_t dtb){
+
+}
+
