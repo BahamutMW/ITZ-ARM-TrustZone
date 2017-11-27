@@ -850,7 +850,9 @@ void vmi_print_hex(unsigned char * data, unsigned long length){
 
 //Gets the name of the VM that ITZ is accessing.
 char * vmi_get_name(Vm * _vm){
-  return 0;
+  char * name;
+  name = "Genode";
+  return name;
 
 }
 
@@ -896,7 +898,17 @@ win_ver_t vmi_get_winver_manual(Vm * _vm, uint64_t kdvb_pa){
 
 //Get the memory offset associated with the given offset_name. Valid names include everything in the /etc/libvmi.conf file.
 uint64_t vmi_get_offset(Vm * _vm, char * offset_name){
-  return 0;
+  uint64_t * offset;
+
+  if (Genode::strcmp("pid",offset_name)==0){
+    offset = 0xe8;
+  }else if (Genode::strcmp("name",offset_name)==0){
+    offset = 0x8;
+  }else if (Genode::strcmp("tasks",offset_name)==0){
+    offset = 0xac;
+  }
+  
+  return offset;
 }
 
 // Gets the memory size of the guest or file that LibVMI is currently accessing. This is effectively the max physical address that you can access in the system.
