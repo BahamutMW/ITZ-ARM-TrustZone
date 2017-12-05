@@ -836,12 +836,47 @@ void vmi_print_hex_pa(Vm * _vm, uint64_t paddr, size_t length) {
 
 //Prints out the hex and ascii version of a chunk of bytes.
 void vmi_print_hex_ksym(Vm * _vm, char * sym, size_t length){
-
+  uint64_t paddr;
+  paddr = vmi_translate_ksym2v(_vm,sym);
+  vmi_print_hex_pa(_vm, paddr, length);
 }
 
 //Prints out the hex and ascii version of a chunk of bytes.
 void vmi_print_hex(unsigned char * data, unsigned long length){
+  unsigned char buff[17];
+  unsigned int i;
 
+// Process every byte in the data.
+  for (i = 0; i < length; i++) {
+    // Multiple of 16 means new line (with line offset).
+
+    if ((i % 16) == 0) {
+      // Just don't print ASCII for the zeroth line.
+      if (i != 0)
+        Genode::printf("  %s\n", buff);
+
+      // Output the offset.
+      Genode::printf("  %04x ", i);
+    }
+
+    // Now the hex code for the specific character.
+    Genode::printf(" %02x", data[i]);
+
+    // And store a printable ASCII character for later.
+    if ((data[i] < 0x20) || (data[i] > 0x7e)) {
+      buff[i % 16] = '.';
+    } else {
+      buff[i % 16] = data[i];
+    }
+
+    buff[(i % 16) + 1] = '\0';
+  }
+
+  // Pad out last line if not exactly 16 characters.
+  while ((i % 16) != 0) {
+    Genode::printf("   ");
+    i++;
+  }
 }
 
 /**
@@ -898,14 +933,14 @@ win_ver_t vmi_get_winver_manual(Vm * _vm, uint64_t kdvb_pa){
 
 //Get the memory offset associated with the given offset_name. Valid names include everything in the /etc/libvmi.conf file.
 uint64_t vmi_get_offset(Vm * _vm, char * offset_name){
-  uint64_t * offset;
+  uint64_t offset;
 
   if (Genode::strcmp("pid",offset_name)==0){
-    offset = 0xe8;
+    offset = (uint64_t) 0xe8;
   }else if (Genode::strcmp("name",offset_name)==0){
-    offset = 0x8;
+    offset = (uint64_t) 0x8;
   }else if (Genode::strcmp("tasks",offset_name)==0){
-    offset = 0xac;
+    offset = (uint64_t) 0xac;
   }
   
   return offset;
