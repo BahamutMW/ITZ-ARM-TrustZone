@@ -441,8 +441,7 @@ status_t vmi_init_complete_custom(Vm * _vm, uint32_t flags,
   const char config);
 
 //Initialize or reinitialize the paging specific functionality of LibVMI.
-//TODO FIX ME
-//page_mode_t vmi_init_paging (Ṽm *_vm, uint8_t force_reinit);
+page_mode_t vmi_init_paging (Vm *_vm, uint8_t force_reinit);
 
 //Destroys an instance by freeing memory and closing any open handles.
 status_t vmi_destroy(Vm * _vm);

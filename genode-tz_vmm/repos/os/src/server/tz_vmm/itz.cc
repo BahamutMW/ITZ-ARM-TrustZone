@@ -64,10 +64,9 @@ status_t vmi_init_complete_custom (Vm *_vm, uint32_t flags, const char config){
 }
 
 //Initialize or reinitialize the paging specific functionality of LibVMI.
-/*page_mode_t vmi_init_paging (Ṽm *_vm, uint8_t force_reinit){
+page_mode_t vmi_init_paging (Vm *_vm, uint8_t force_reinit){
     return VMI_PM_AARCH32;
-
-}*/
+}
 
 //Destroys an instance by freeing memory and closing any open handles.
 status_t vmi_destroy (Vm *_vm){
@@ -903,8 +902,9 @@ uint32_t vmi_get_access_mode(Vm * _vm){
 }
 
 // Gets the current page mode for LibVMI, which tells what type of address translation is in use (e.g., VMI_PM_LEGACY, VMI_PM_PAE, or VMI_PM_IA32E).
-//page_mode_t vmi_get_page_mode(Vm * _vm){
-//}
+page_mode_t vmi_get_page_mode(Vm * _vm){
+    return VMI_PM_AARCH32;
+}
 
 // Gets the current address width for the given vmi_instance_t
 uint8_t vmi_get_address_width(Vm * _vm){

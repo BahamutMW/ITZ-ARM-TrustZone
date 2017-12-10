@@ -876,7 +876,7 @@ int introspect_kernel_check(char *hashname) {
       SHA512_CTX c;
       
       unsigned char out[SHA512_DIGEST_LENGTH];
-
+      
       SHA512_Init(&c);
 
       for (i=0; i<51; i+= 1) {
