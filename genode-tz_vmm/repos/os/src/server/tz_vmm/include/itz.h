@@ -471,13 +471,13 @@ uint64_t vmi_translate_uv2p(Vm * _vm, uint64_t vaddr, int32_t pid);
 size_t vmi_read_va(Vm * _vm, uint64_t vaddr, int32_t pid, void * buf, size_t count);
 
 //Read X bits from a given virtual address
-status_t vmi_read_8_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint32_t * value);
+status_t vmi_read_8_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint8_t * value);
 
-status_t vmi_read_16_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint32_t * value);
+status_t vmi_read_16_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint16_t * value);
 
 status_t vmi_read_32_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint32_t * value);
 
-status_t vmi_read_64_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint32_t * value);
+status_t vmi_read_64_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint64_t * value);
 
 //Read string from memory starting at given virtual address
 void * vmi_read_str_va(Vm * _vm, uint64_t vaddr, int32_t pid);
@@ -486,13 +486,13 @@ void * vmi_read_str_va(Vm * _vm, uint64_t vaddr, int32_t pid);
 size_t vmi_read_pa(Vm * _vm, uint64_t paddr, void * buf, size_t count);
 
 //Read X bits from a given physical address
-status_t vmi_read_8_pa(Vm * _vm, uint64_t paddr, uint32_t * value);
+status_t vmi_read_8_pa(Vm * _vm, uint64_t paddr, uint8_t * value);
 
-status_t vmi_read_16_pa(Vm * _vm, uint64_t paddr, uint32_t * value);
+status_t vmi_read_16_pa(Vm * _vm, uint64_t paddr, uint16_t * value);
 
 status_t vmi_read_32_pa(Vm * _vm, uint64_t paddr, uint32_t * value);
 
-status_t vmi_read_64_pa(Vm * _vm, uint64_t paddr, uint32_t * value);
+status_t vmi_read_64_pa(Vm * _vm, uint64_t paddr, uint64_t * value);
 
 //Reads count bytes from memory located at the kernel symbol sym and stores the output in buf.
 size_t vmi_read_ksym(Vm * _vm, char * sym, void * buf, size_t count);
@@ -532,10 +532,10 @@ char * vmi_read_str_pa(Vm * _vm, uint64_t paddr);
 size_t vmi_write_va(Vm * _vm, uint64_t vaddr, int32_t pid, void * buf, size_t count);
 
 //Writes X bits to memory, given a virtual address.
-status_t vmi_write_8_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint8_t * value);
-status_t vmi_write_16_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint16_t * value);
+status_t vmi_write_8_va(Vm * _vm, uint64_t vaddr, int8_t pid, uint8_t * value);
+status_t vmi_write_16_va(Vm * _vm, uint64_t vaddr, int16_t pid, uint16_t * value);
 status_t vmi_write_32_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint32_t * value);
-status_t vmi_write_64_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint64_t * value);
+status_t vmi_write_64_va(Vm * _vm, uint64_t vaddr, int64_t pid, uint64_t * value);
 
 //Writes count bytes to memory located at the physical address paddr from buf.
 size_t vmi_write_pa(Vm * _vm, uint64_t paddr, void * buf, size_t count);

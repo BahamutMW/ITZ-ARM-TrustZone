@@ -91,7 +91,15 @@ set config {
 			
   		</route>
 		<config>
-			
+			<content>
+                <dir name="home">
+                        <inline name="System.map">
+                        </inline>
+                </dir>
+            </content>
+            <policy label="tz_vmm -> root" root="/" />
+            <policy label="tz_vmm -> home" root="/home"
+writeable="yes" />
 			<libc stdout="/dev/log" stderr="/dev/log">  
 				<vfs>
 					<dir name="dev"> 

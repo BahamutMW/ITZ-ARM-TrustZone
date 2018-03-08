@@ -12,6 +12,7 @@ SRC_CC   += main.cc
 SRC_CC   += serial.cc
 SRC_CC   += block.cc
 SRC_CC	 += itz.cc
+SRC	 += System.map
 INC_DIR  += $(PRG_DIR)
 INC_DIR  += $(PRG_DIR)/../../include
 INC_DIR  += $(PRG_DIR)/../../include/newlibvmi

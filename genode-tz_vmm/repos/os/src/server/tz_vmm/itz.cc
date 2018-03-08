@@ -74,6 +74,10 @@ status_t vmi_destroy (Vm *_vm){
 
 }
 
+//Reads count bytes from memory located at the kernel symbol sym and stores the output in buf.
+size_t vmi_read_ksym(Vm * _vm, char * sym, void * buf, size_t count){
+  return 0;
+};
 
 
 size_t vmi_read_va (Vm *_vm, uint64_t vaddr, int32_t pid, void *buf, size_t count){
@@ -286,8 +290,8 @@ size_t vmi_read_pa (Vm *_vm, uint64_t paddr, void *buf, size_t count){
 
 
     //Reads 8 bytes from memory located at the physical address paddr and stores the output in buf.
-status_t vmi_read_8_pa (Vm *_vm, uint64_t paddr, uint32_t * value){
-  void *_buf;
+status_t vmi_read_8_pa (Vm *_vm, uint64_t paddr, uint8_t * value){
+  uint8_t *_buf;
   Genode::size_t _buf_size;
   Ram *  ram;
 
@@ -307,16 +311,17 @@ status_t vmi_read_8_pa (Vm *_vm, uint64_t paddr, uint32_t * value){
   }
 
   Genode::addr_t buf_off = buf_base - ram->base();
-  _buf = (void *)(ram->local() + buf_off);
-  Genode::printf("Content of 8 bits of the physical address: %s\n", (char*)_buf);
+  _buf = (uint8_t*)(ram->local() + buf_off);
+  value = _buf;
+  Genode::printf("Content of 8 bits of the physical address: %x\n", _buf[0]);
   return VMI_SUCCESS;
 
 }
 
 
     //Reads 16 bytes from memory located at the physical address paddr and stores the output in buf.
-status_t vmi_read_16_pa (Vm *_vm, uint64_t paddr, uint32_t * value){
-  void *_buf;
+status_t vmi_read_16_pa (Vm *_vm, uint64_t paddr, uint16_t * value){
+  uint16_t *_buf;
   Genode::size_t _buf_size;
   Ram *  ram;
 
@@ -336,8 +341,9 @@ status_t vmi_read_16_pa (Vm *_vm, uint64_t paddr, uint32_t * value){
   }
 
   Genode::addr_t buf_off = buf_base - ram->base();
-  _buf = (void *)(ram->local() + buf_off);
-  Genode::printf("Content of 16 bits of the physical address: %s\n", (char*)_buf);
+  _buf = (uint16_t *)(ram->local() + buf_off);
+  value = _buf;
+  Genode::printf("Content of 16 bits of the physical address: %x\n %x\n", _buf[0], _buf[1]);
   return VMI_SUCCESS;
 
 }
@@ -345,7 +351,7 @@ status_t vmi_read_16_pa (Vm *_vm, uint64_t paddr, uint32_t * value){
 
     //Reads 32 bytes from memory located at the physical address paddr and stores the output in buf.
 status_t vmi_read_32_pa (Vm *_vm, uint64_t paddr, uint32_t * value){
-  void *_buf;
+  uint32_t *_buf;
   Genode::size_t _buf_size;
   Ram *  ram;
 
@@ -365,16 +371,18 @@ status_t vmi_read_32_pa (Vm *_vm, uint64_t paddr, uint32_t * value){
   }
 
   Genode::addr_t buf_off = buf_base - ram->base();
-  _buf = (void *)(ram->local() + buf_off);
-  Genode::printf("Content of of the physical address: %s\n", (char*)_buf);
+  _buf = (uint32_t *)(ram->local() + buf_off);
+  value = _buf;
+
+  Genode::printf("Content of of the physical address: %x\n %x\n %x\n %x\n", _buf[0],_buf[1],_buf[2],_buf[3]);
   return VMI_SUCCESS;
 
 }
 
 
     //Reads 64 bytes from memory located at the physical address paddr and stores the output in buf.
-status_t vmi_read_64_pa (Vm *_vm, uint64_t paddr, uint32_t * value){
-  void *_buf;
+status_t vmi_read_64_pa (Vm *_vm, uint64_t paddr, uint64_t * value){
+  uint64_t *_buf;
   Genode::size_t _buf_size;
   Ram *  ram;
 
@@ -394,8 +402,9 @@ status_t vmi_read_64_pa (Vm *_vm, uint64_t paddr, uint32_t * value){
   }
 
   Genode::addr_t buf_off = buf_base - ram->base();
-  _buf = (void *)(ram->local() + buf_off);
-  Genode::printf("Content of of the physical address: %s\n", (char*)_buf);
+  _buf = (uint64_t *)(ram->local() + buf_off);
+  value = _buf;
+  Genode::printf("Content of of the physical address: %x\n %x\n %x\n %x\n %x\n %x\n %x\n %x\n", _buf[0],_buf[1],_buf[2],_buf[3],_buf[4],_buf[5],_buf[6],_buf[7]);
   return VMI_SUCCESS;
 
 }
@@ -422,7 +431,6 @@ uint64_t vmi_translate_p2uv (Vm *_vm, uint64_t phy_addr, int32_t pid){
   ram = _vm->ram();
   Genode::addr_t virt_addr_SW  =  ram->va(phy_addr);
   Genode::printf("Corresponding Virtual Address: %lu\n", virt_addr_SW);
-
   return virt_addr_SW;
       //Genode::printf("Corresponding Virtual Address: %s\n", _ram.local());
 }
@@ -505,7 +513,7 @@ status_t vmi_write_8_va (Vm *_vm, uint64_t vaddr, int32_t pid, uint8_t *value){
   Genode::addr_t buf_off = buf_base - ram->base();
   _buf = (void *)(ram->local() + buf_off);
 
-  Genode::memcpy(_buf, value, 8);
+  Genode::memcpy(_buf, value, 1);
 
   char *data = (char*)_buf;     
   Genode::printf("Written: %s\n", data);
@@ -514,7 +522,7 @@ status_t vmi_write_8_va (Vm *_vm, uint64_t vaddr, int32_t pid, uint8_t *value){
 }
 
 //Writes 8 bits to memory, given a virtual address.
-status_t vmi_write_16_va (Vm *_vm, uint64_t vaddr, int32_t pid, uint8_t *value){
+status_t vmi_write_16_va (Vm *_vm, uint64_t vaddr, int32_t pid, uint16_t *value){
   void *_buf;
   Genode::size_t _buf_size;
   Ram *  ram;
@@ -541,7 +549,7 @@ status_t vmi_write_16_va (Vm *_vm, uint64_t vaddr, int32_t pid, uint8_t *value){
   Genode::addr_t buf_off = buf_base - ram->base();
   _buf = (void *)(ram->local() + buf_off);
 
-  Genode::memcpy(_buf, value, 16);
+  Genode::memcpy(_buf, value, 2);
 
   char *data = (char*)_buf;     
   Genode::printf("Written: %s\n", data);
@@ -551,7 +559,7 @@ status_t vmi_write_16_va (Vm *_vm, uint64_t vaddr, int32_t pid, uint8_t *value){
 
 
 //Writes 8 bits to memory, given a virtual address.
-status_t vmi_write_32_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint8_t * value) {
+status_t vmi_write_32_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint32_t * value) {
    void *_buf;
   Genode::size_t _buf_size;
   Ram *  ram;
@@ -578,7 +586,7 @@ status_t vmi_write_32_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint8_t * value)
   Genode::addr_t buf_off = buf_base - ram->base();
   _buf = (void *)(ram->local() + buf_off);
 
-  Genode::memcpy(_buf, value, 32);
+  Genode::memcpy(_buf, value, 4);
 
   char *data = (char*)_buf;     
   Genode::printf("Written: %s\n", data);
@@ -587,7 +595,7 @@ status_t vmi_write_32_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint8_t * value)
   }
 
   //Writes 8 bits to memory, given a virtual address.
-status_t vmi_write_64_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint8_t * value) {
+status_t vmi_write_64_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint64_t * value) {
   void *_buf;
   Genode::size_t _buf_size;
   Ram *  ram;
@@ -614,7 +622,7 @@ status_t vmi_write_64_va(Vm * _vm, uint64_t vaddr, int32_t pid, uint8_t * value)
   Genode::addr_t buf_off = buf_base - ram->base();
   _buf = (void *)(ram->local() + buf_off);
 
-  Genode::memcpy(_buf, value, 64);
+  Genode::memcpy(_buf, value, 1);
 
   char *data = (char*)_buf;     
   Genode::printf("Written: %s\n", data);
@@ -656,13 +664,12 @@ size_t vmi_write_pa (Vm *_vm, uint64_t paddr, void *buf, size_t count){
 
   //Writes 8 bits to memory, given a physical address.
 status_t vmi_write_8_pa(Vm * _vm, uint64_t paddr, uint8_t * value) {
-   void *_buf;
+  uint8_t *_buf;
   Genode::size_t _buf_size;
   Ram *  ram;
 
   Genode::addr_t buf_base = paddr;
-
-  _buf_size = 8;
+  _buf_size = sizeof(value);
 
   Genode::addr_t buf_top  = buf_base + _buf_size;
   ram = _vm->ram();
@@ -677,9 +684,9 @@ status_t vmi_write_8_pa(Vm * _vm, uint64_t paddr, uint8_t * value) {
     PERR("Illegal block buffer constraints");
   }
   Genode::addr_t buf_off = buf_base - ram->base();
-  _buf = (void *)(ram->local() + buf_off);
+  _buf = (uint8_t *)(ram->local() + buf_off);
 
-  Genode::memcpy(_buf, value, 8);
+  Genode::memcpy(_buf, value, sizeof(value));
 
   char *data = (char*)_buf;     
   Genode::printf("Written: %s\n", data);
@@ -688,7 +695,7 @@ status_t vmi_write_8_pa(Vm * _vm, uint64_t paddr, uint8_t * value) {
 }
 
 //Writes 8 bits to memory, given a physical address.
-status_t vmi_write_16_pa(Vm * _vm, uint64_t paddr, uint8_t * value) {
+status_t vmi_write_16_pa(Vm * _vm, uint64_t paddr, uint16_t * value) {
    void *_buf;
   Genode::size_t _buf_size;
   Ram *  ram;
@@ -712,7 +719,7 @@ status_t vmi_write_16_pa(Vm * _vm, uint64_t paddr, uint8_t * value) {
   Genode::addr_t buf_off = buf_base - ram->base();
   _buf = (void *)(ram->local() + buf_off);
 
-  Genode::memcpy(_buf, value, 16);
+  Genode::memcpy(_buf, value, 2);
 
   char *data = (char*)_buf;     
   Genode::printf("Written: %s\n", data);
@@ -721,7 +728,7 @@ status_t vmi_write_16_pa(Vm * _vm, uint64_t paddr, uint8_t * value) {
 }
 
 //Writes 8 bits to memory, given a physical address.
-status_t vmi_write_32_pa(Vm * _vm, uint64_t paddr, uint8_t * value) {
+status_t vmi_write_32_pa(Vm * _vm, uint64_t paddr, uint32_t * value) {
    void *_buf;
   Genode::size_t _buf_size;
   Ram *  ram;
@@ -745,7 +752,7 @@ status_t vmi_write_32_pa(Vm * _vm, uint64_t paddr, uint8_t * value) {
   Genode::addr_t buf_off = buf_base - ram->base();
   _buf = (void *)(ram->local() + buf_off);
 
-  Genode::memcpy(_buf, value, 32);
+  Genode::memcpy(_buf, value, 4);
 
   char *data = (char*)_buf;     
   Genode::printf("Written: %s\n", data);
@@ -754,7 +761,7 @@ status_t vmi_write_32_pa(Vm * _vm, uint64_t paddr, uint8_t * value) {
 }
 
 //Writes 8 bits to memory, given a physical address.
-status_t vmi_write_64_pa(Vm * _vm, uint64_t paddr, uint8_t * value) {
+status_t vmi_write_64_pa(Vm * _vm, uint64_t paddr, uint64_t * value) {
    void *_buf;
   Genode::size_t _buf_size;
   Ram *  ram;
@@ -778,7 +785,7 @@ status_t vmi_write_64_pa(Vm * _vm, uint64_t paddr, uint8_t * value) {
   Genode::addr_t buf_off = buf_base - ram->base();
   _buf = (void *)(ram->local() + buf_off);
 
-  Genode::memcpy(_buf, value, 64);
+  Genode::memcpy(_buf, value, 1);
 
   char *data = (char*)_buf;     
   Genode::printf("Written: %s\n", data);
