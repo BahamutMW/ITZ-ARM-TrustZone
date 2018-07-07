@@ -22,6 +22,7 @@ void map_addr(Vm *_vm, unsigned char * data, unsigned long length){
         printf("failed to map memory.\n");
         goto error_exit;
     }
-    vmi_print_hex(data, lenght);
+    vmi_print_hex(data, PAGE_SIZE);
 
 }
+
