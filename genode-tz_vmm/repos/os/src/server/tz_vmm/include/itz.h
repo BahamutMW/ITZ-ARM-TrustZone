@@ -419,6 +419,11 @@ typedef uint64_t addr_t;
 
 typedef int32_t vmi_pid_t;
 
+
+//Additional Functions
+
+char** strsplit(const char* s, const char* del);
+
 /**
  * Stub Functions (They do absolutely nothing!) 
  * Descriptions are according to LibVMI API
